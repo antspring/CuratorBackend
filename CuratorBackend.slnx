@@ -1,6 +1,8 @@
 <Solution>
   <Folder Name="/Solution Items/">
     <File Path="compose.yaml" />
+    <File Path="Directory.Build.props" />
+    <File Path="global.json" />
   </Folder>
   <Project Path="API/API.csproj" />
   <Project Path="Application/Application.csproj" />
