@@ -4,6 +4,9 @@
     <File Path="Directory.Build.props" />
     <File Path="global.json" />
   </Folder>
+  <Folder Name="/Tests/">
+    <Project Path="Tests/UnitTests/UnitTests.csproj" />
+  </Folder>
   <Project Path="API/API.csproj" />
   <Project Path="Application/Application.csproj" />
   <Project Path="Domain/Domain.csproj" />
