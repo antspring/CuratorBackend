@@ -3,6 +3,7 @@
     <File Path=".env.example" />
     <File Path="compose.yaml" />
     <File Path="Directory.Build.props" />
+    <File Path="dotnet-tools.json" />
     <File Path="global.json" />
   </Folder>
   <Folder Name="/Tests/">
