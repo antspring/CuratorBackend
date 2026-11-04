@@ -1,4 +1,5 @@
 using API.Cors;
+using API.Errors;
 using Application;
 using Infrastructure;
 
@@ -9,8 +10,8 @@ builder.Services
     .AddInfrastructure(builder.Configuration);
 
 builder.Services.AddFrontendCors(builder.Configuration);
-builder.Services.AddControllers();
-builder.Services.AddProblemDetails();
+builder.Services.AddApiControllers();
+builder.Services.AddApiProblemDetails();
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
