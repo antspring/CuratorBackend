@@ -1,3 +1,4 @@
+using Infrastructure.Authentication;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
@@ -40,6 +41,8 @@ public static class DependencyInjection
             })
             .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<AppDbContext>();
+
+        services.AddJwtAuthentication(configuration);
 
         services.AddHealthChecks()
             .AddNpgSql(connectionString, name: "postgresql");
