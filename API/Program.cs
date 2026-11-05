@@ -1,5 +1,6 @@
 using API.Cors;
 using API.Errors;
+using API.RateLimiting;
 using Application;
 using Infrastructure;
 
@@ -12,6 +13,7 @@ builder.Services
 builder.Services.AddFrontendCors(builder.Configuration);
 builder.Services.AddApiControllers();
 builder.Services.AddApiProblemDetails();
+builder.Services.AddApiRateLimiting(builder.Configuration);
 builder.Services.AddOpenApi();
 
 var app = builder.Build();
@@ -20,6 +22,7 @@ app.UseExceptionHandler();
 app.UseStatusCodePages();
 
 app.UseCors(CorsExtensions.FrontendPolicy);
+app.UseRateLimiter();
 app.UseAuthentication();
 app.UseAuthorization();
 

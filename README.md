@@ -114,6 +114,7 @@ dotnet run --project API
 | `Jwt:Issuer`, `Jwt:Audience` | Издатель и аудитория токенов. Заданы в `appsettings.json`, не секрет |
 | `Jwt:AccessTokenLifetime`, `Jwt:RefreshTokenLifetime` | Сроки жизни токенов: `00:15:00` и `14.00:00:00` |
 | `Cors:AllowedOrigins` | Массив origin frontend, которым разрешены запросы к API |
+| `RateLimiting:Auth:PermitLimit`, `RateLimiting:Auth:Window` | Лимит запросов к регистрации, входу и обновлению токена с одного IP: по умолчанию 10 за `00:01:00`. Сверх лимита — `429` с заголовком `Retry-After` |
 
 Где задаются значения:
 
@@ -166,6 +167,9 @@ Cors__AllowedOrigins__0=https://curator.example
    ```
 
 4. Запустите контейнер и проверьте `GET /health` — ожидается `200 Healthy`.
+
+Лимит запросов считается по IP клиента. Если API стоит за reverse proxy или балансировщиком, все запросы
+приходят с IP прокси и делят один лимит — тогда нужно настроить проброс реального IP (`X-Forwarded-For`).
 
 Если приложение не стартует, в логах контейнера будет причина: не задана строка подключения
 или `Jwt:SigningKey` отсутствует либо короче 32 символов.

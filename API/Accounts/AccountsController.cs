@@ -1,7 +1,9 @@
 using API.Errors;
+using API.RateLimiting;
 using Application.Accounts;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace API.Accounts;
 
@@ -11,6 +13,7 @@ public sealed class AccountsController(AccountService accountService) : Controll
 {
     [HttpPost]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
     [ProducesResponseType<AccountResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]

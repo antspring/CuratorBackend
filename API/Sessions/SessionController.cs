@@ -1,7 +1,9 @@
 using API.Errors;
+using API.RateLimiting;
 using Application.Sessions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace API.Sessions;
 
@@ -11,6 +13,7 @@ public sealed class SessionController(SessionService sessionService) : Controlle
 {
     [HttpPost]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
     [ProducesResponseType<TokenPairResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
@@ -29,6 +32,7 @@ public sealed class SessionController(SessionService sessionService) : Controlle
 
     [HttpPost("refresh")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitingExtensions.AuthPolicy)]
     [ProducesResponseType<TokenPairResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
