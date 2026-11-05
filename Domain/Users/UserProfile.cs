@@ -5,13 +5,13 @@ namespace Domain.Users;
 public sealed class UserProfile
 {
     public const int NameMaxLength = 100;
-    public const int TimeZoneMaxLength = 100;
+    public const int TimezoneMaxLength = 100;
 
     private UserProfile()
     {
     }
 
-    public UserProfile(Guid userId, string firstName, string? lastName, string timeZone, DateTimeOffset now)
+    public UserProfile(Guid userId, string firstName, string? lastName, string timezone, DateTimeOffset now)
     {
         if (userId == Guid.Empty)
         {
@@ -21,7 +21,7 @@ public sealed class UserProfile
         UserId = userId;
         CreatedAt = now.ToUniversalTime();
         Rename(firstName, lastName, now);
-        ChangeTimeZone(timeZone, now);
+        ChangeTimezone(timezone, now);
     }
 
     public Guid UserId { get; private set; }
@@ -30,7 +30,7 @@ public sealed class UserProfile
 
     public string? LastName { get; private set; }
 
-    public string TimeZone { get; private set; } = null!;
+    public string Timezone { get; private set; } = null!;
 
     public DateTimeOffset CreatedAt { get; private set; }
 
@@ -43,17 +43,17 @@ public sealed class UserProfile
         UpdatedAt = now.ToUniversalTime();
     }
 
-    public void ChangeTimeZone(string timeZone, DateTimeOffset now)
+    public void ChangeTimezone(string timezone, DateTimeOffset now)
     {
-        var trimmed = timeZone?.Trim();
+        var trimmed = timezone?.Trim();
 
-        if (string.IsNullOrEmpty(trimmed) || trimmed.Length > TimeZoneMaxLength
+        if (string.IsNullOrEmpty(trimmed) || trimmed.Length > TimezoneMaxLength
             || !TimeZoneInfo.TryFindSystemTimeZoneById(trimmed, out _))
         {
-            throw new DomainException(nameof(TimeZone), "Укажите часовой пояс IANA, например Asia/Yekaterinburg.");
+            throw new DomainException(nameof(Timezone), "Укажите часовой пояс IANA, например Asia/Yekaterinburg.");
         }
 
-        TimeZone = trimmed;
+        Timezone = trimmed;
         UpdatedAt = now.ToUniversalTime();
     }
 

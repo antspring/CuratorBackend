@@ -15,7 +15,7 @@ public class UserProfileTests
 
         Assert.Equal("Анна", profile.FirstName);
         Assert.Null(profile.LastName);
-        Assert.Equal("Asia/Yekaterinburg", profile.TimeZone);
+        Assert.Equal("Asia/Yekaterinburg", profile.Timezone);
         Assert.Equal(TimeSpan.Zero, profile.CreatedAt.Offset);
         Assert.Equal(Now.UtcDateTime, profile.UpdatedAt.UtcDateTime);
     }
@@ -43,11 +43,11 @@ public class UserProfileTests
     [Theory]
     [InlineData("Mars/Olympus")]
     [InlineData("")]
-    public void Constructor_RejectsUnknownTimeZone(string timeZone)
+    public void Constructor_RejectsUnknownTimezone(string timezone)
     {
-        var exception = Assert.Throws<DomainException>(() => new UserProfile(UserId, "Анна", null, timeZone, Now));
+        var exception = Assert.Throws<DomainException>(() => new UserProfile(UserId, "Анна", null, timezone, Now));
 
-        Assert.Equal(nameof(UserProfile.TimeZone), exception.Field);
+        Assert.Equal(nameof(UserProfile.Timezone), exception.Field);
     }
 
     [Fact]

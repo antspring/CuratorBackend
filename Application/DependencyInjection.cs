@@ -1,4 +1,6 @@
+using Application.Accounts;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Application;
 
@@ -6,6 +8,9 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
+        services.TryAddSingleton(TimeProvider.System);
+        services.AddScoped<AccountService>();
+
         return services;
     }
 }

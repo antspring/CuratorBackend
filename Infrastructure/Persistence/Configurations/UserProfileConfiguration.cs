@@ -15,9 +15,7 @@ internal sealed class UserProfileConfiguration : IEntityTypeConfiguration<UserPr
         builder.Property(profile => profile.UserId).ValueGeneratedNever();
         builder.Property(profile => profile.FirstName).HasMaxLength(UserProfile.NameMaxLength);
         builder.Property(profile => profile.LastName).HasMaxLength(UserProfile.NameMaxLength);
-        builder.Property(profile => profile.TimeZone)
-            .HasColumnName("timezone")
-            .HasMaxLength(UserProfile.TimeZoneMaxLength);
+        builder.Property(profile => profile.Timezone).HasMaxLength(UserProfile.TimezoneMaxLength);
 
         builder.HasOne<ApplicationUser>()
             .WithOne()

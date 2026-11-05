@@ -1,3 +1,4 @@
+using Application.Accounts;
 using Infrastructure.Authentication;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;
@@ -41,6 +42,8 @@ public static class DependencyInjection
             })
             .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<AppDbContext>();
+
+        services.AddScoped<IAccountStore, AccountStore>();
 
         services.AddJwtAuthentication(configuration);
 

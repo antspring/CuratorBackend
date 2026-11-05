@@ -43,7 +43,7 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("last_name");
 
-                    b.Property<string>("TimeZone")
+                    b.Property<string>("Timezone")
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
