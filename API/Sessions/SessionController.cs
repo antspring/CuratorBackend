@@ -27,6 +27,35 @@ public sealed class SessionController(SessionService sessionService) : Controlle
         };
     }
 
+    [HttpPost("refresh")]
+    [AllowAnonymous]
+    [ProducesResponseType<TokenPairResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    public async Task<ActionResult<TokenPairResponse>> Refresh(RefreshRequest request, CancellationToken cancellationToken)
+    {
+        var result = await sessionService.RefreshAsync(request.RefreshToken, cancellationToken);
+
+        return result switch
+        {
+            RefreshResult.Succeeded succeeded => NoStore(Ok(TokenPairResponse.From(succeeded.Account, succeeded.Tokens))),
+            RefreshResult.InvalidRefreshToken =>
+                this.ProblemWithCode(StatusCodes.Status401Unauthorized, ErrorCodes.InvalidRefreshToken, "Refresh-токен недействителен. Войдите заново."),
+            _ => throw new InvalidOperationException($"Неизвестный результат обновления: {result.GetType().Name}"),
+        };
+    }
+
+    [HttpDelete]
+    [AllowAnonymous]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> Logout(RefreshRequest request, CancellationToken cancellationToken)
+    {
+        await sessionService.LogoutAsync(request.RefreshToken, cancellationToken);
+
+        return NoContent();
+    }
+
     private ActionResult NoStore(ActionResult result)
     {
         Response.Headers.CacheControl = "no-store";

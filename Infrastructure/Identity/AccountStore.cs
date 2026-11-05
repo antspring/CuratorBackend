@@ -43,6 +43,18 @@ internal sealed class AccountStore(
             await userManager.ResetAccessFailedCountAsync(user);
         }
 
+        return await ToAccountAsync(user);
+    }
+
+    public async Task<Account?> FindByIdAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var user = await userManager.FindByIdAsync(userId.ToString());
+
+        return user is null ? null : await ToAccountAsync(user);
+    }
+
+    private async Task<Account> ToAccountAsync(ApplicationUser user)
+    {
         var roles = await userManager.GetRolesAsync(user);
 
         return new Account(user.Id, user.Email!, roles.Order().ToList());
