@@ -18,6 +18,9 @@ public sealed class AccountService(IAccountStore accountStore, TimeProvider time
         return accountStore.CreateAsync(command.Email.Trim(), command.Password, roles, profile, cancellationToken);
     }
 
+    public Task<Account?> FindAsync(Guid userId, CancellationToken cancellationToken) =>
+        accountStore.FindByIdAsync(userId, cancellationToken);
+
     private static IReadOnlyList<string> NormalizeRoles(IReadOnlyCollection<string> roles)
     {
         var normalized = roles.Select(role => role.Trim().ToLowerInvariant()).ToList();
