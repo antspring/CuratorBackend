@@ -1,4 +1,5 @@
 using Application.Accounts;
+using Application.Sessions;
 using Infrastructure.Authentication;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;
@@ -44,6 +45,7 @@ public static class DependencyInjection
             .AddEntityFrameworkStores<AppDbContext>();
 
         services.AddScoped<IAccountStore, AccountStore>();
+        services.AddScoped<ITokenService, TokenService>();
 
         services.AddJwtAuthentication(configuration);
 

@@ -10,4 +10,6 @@ public interface IAccountStore
         IReadOnlyList<string> roles,
         UserProfile profile,
         CancellationToken cancellationToken);
+
+    Task<Account?> VerifyCredentialsAsync(string email, string password, CancellationToken cancellationToken);
 }
