@@ -195,3 +195,12 @@ dotnet ef database update --project Infrastructure --startup-project API
 ```bash
 dotnet test
 ```
+
+| Проект | Что проверяет |
+| --- | --- |
+| `Tests/UnitTests` | Доменные инварианты и направление зависимостей между слоями |
+| `Tests/IntegrationTests` | HTTP API целиком: регистрация, вход, токены, ошибки, ограничение частоты |
+
+Интеграционные тесты поднимают настоящий PostgreSQL 18 в контейнере через Testcontainers,
+поэтому для них должен быть запущен Docker. Строка подключения, ключ JWT и миграции настраиваются
+автоматически — user secrets и `.env` не нужны.

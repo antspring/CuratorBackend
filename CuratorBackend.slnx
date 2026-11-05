@@ -8,6 +8,7 @@
     <File Path="README.md" />
   </Folder>
   <Folder Name="/Tests/">
+    <Project Path="Tests/IntegrationTests/IntegrationTests.csproj" />
     <Project Path="Tests/UnitTests/UnitTests.csproj" />
   </Folder>
   <Project Path="API/API.csproj" />
