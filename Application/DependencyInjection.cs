@@ -1,4 +1,5 @@
 using Application.Accounts;
+using Application.Catalogs;
 using Application.Sessions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -12,6 +13,7 @@ public static class DependencyInjection
         services.TryAddSingleton(TimeProvider.System);
         services.AddScoped<AccountService>();
         services.AddScoped<SessionService>();
+        services.AddScoped<CatalogService>();
 
         return services;
     }
