@@ -10,7 +10,7 @@ public sealed class CatalogItem
 
     public CatalogItem(string kind, string code, string name, short sortOrder)
     {
-        if (!CatalogKinds.All.Contains(kind))
+        if (!CatalogKinds.ItemKinds.Contains(kind))
         {
             throw new DomainException(nameof(Kind), $"Неизвестный справочник '{kind}'.");
         }

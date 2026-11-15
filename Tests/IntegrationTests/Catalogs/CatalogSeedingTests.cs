@@ -18,7 +18,7 @@ public class CatalogSeedingTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.True(await db.Cities.AnyAsync(city => city.Code == "yekaterinburg" && city.Name == "Екатеринбург"));
 
         var kinds = await db.CatalogItems.Select(item => item.Kind).Distinct().ToListAsync();
-        Assert.Equal(CatalogKinds.All.Order(), kinds.Order());
+        Assert.Equal(CatalogKinds.ItemKinds.Order(), kinds.Order());
 
         var levels = await db.CatalogItems
             .Where(item => item.Kind == CatalogKinds.SkillLevels)

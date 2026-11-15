@@ -38,7 +38,7 @@ internal sealed record CatalogSeedData(
 
         foreach (var (kind, entries) in Items)
         {
-            if (!CatalogKinds.All.Contains(kind))
+            if (!CatalogKinds.ItemKinds.Contains(kind))
             {
                 throw new InvalidOperationException($"Неизвестный справочник '{kind}' в сид-данных.");
             }

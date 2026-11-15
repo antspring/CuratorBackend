@@ -1,4 +1,5 @@
 using Application.Accounts;
+using Application.Catalogs;
 using Application.Sessions;
 using Infrastructure.Authentication;
 using Infrastructure.Identity;
@@ -49,6 +50,7 @@ public static class DependencyInjection
 
         services.AddScoped<IAccountStore, AccountStore>();
         services.AddScoped<ITokenService, TokenService>();
+        services.AddScoped<ICatalogReader, CatalogReader>();
 
         services.AddJwtAuthentication(configuration);
 

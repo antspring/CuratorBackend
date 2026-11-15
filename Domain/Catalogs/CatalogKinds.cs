@@ -2,6 +2,8 @@ namespace Domain.Catalogs;
 
 public static class CatalogKinds
 {
+    public const string Skills = "skills";
+    public const string Cities = "cities";
     public const string Languages = "languages";
     public const string SkillLevels = "skill-levels";
     public const string MenteeTasks = "mentee-tasks";
@@ -15,9 +17,11 @@ public static class CatalogKinds
 
     public const int MaxLength = 50;
 
-    public static IReadOnlyList<string> All { get; } =
+    public static IReadOnlyList<string> ItemKinds { get; } =
     [
         Languages, SkillLevels, MenteeTasks, Formats, Availability,
         GoalDeadlines, Positions, Experience, MentoringDirections, PricingModels,
     ];
+
+    public static IReadOnlyList<string> All { get; } = [Skills, Cities, .. ItemKinds];
 }
