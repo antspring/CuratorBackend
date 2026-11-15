@@ -3,6 +3,7 @@ using Application.Sessions;
 using Infrastructure.Authentication;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;
+using Infrastructure.Persistence.Seeding;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -23,7 +24,9 @@ public static class DependencyInjection
 
         services.AddDbContext<AppDbContext>(options => options
             .UseNpgsql(connectionString)
-            .UseSnakeCaseNamingConvention());
+            .UseSnakeCaseNamingConvention()
+            .UseSeeding(CatalogSeeder.Seed)
+            .UseAsyncSeeding(CatalogSeeder.SeedAsync));
 
         services.AddIdentityCore<ApplicationUser>(options =>
             {

@@ -16,4 +16,8 @@
         <ProjectReference Include="..\Application\Application.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+        <EmbeddedResource Include="Persistence\Seeding\catalogs.json" LogicalName="catalogs.json" />
+    </ItemGroup>
+
 </Project>
