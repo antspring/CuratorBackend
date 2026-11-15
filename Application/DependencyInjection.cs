@@ -1,5 +1,6 @@
 using Application.Accounts;
 using Application.Catalogs;
+using Application.Files;
 using Application.Sessions;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -14,6 +15,7 @@ public static class DependencyInjection
         services.AddScoped<AccountService>();
         services.AddScoped<SessionService>();
         services.AddScoped<CatalogService>();
+        services.AddScoped<FileService>();
 
         return services;
     }

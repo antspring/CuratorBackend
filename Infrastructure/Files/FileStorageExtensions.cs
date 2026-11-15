@@ -33,6 +33,7 @@ internal static class FileStorageExtensions
         });
 
         services.AddSingleton<IFileStorage, S3FileStorage>();
+        services.AddScoped<IFileMetadataStore, FileMetadataStore>();
 
         return services;
     }
