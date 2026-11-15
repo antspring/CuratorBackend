@@ -1,3 +1,4 @@
+using Domain.Catalogs;
 using Domain.Users;
 using Infrastructure.Authentication;
 using Infrastructure.Identity;
@@ -13,6 +14,12 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<UserProfile> UserProfiles => Set<UserProfile>();
 
     public DbSet<RefreshToken> RefreshTokens => Set<RefreshToken>();
+
+    public DbSet<Skill> Skills => Set<Skill>();
+
+    public DbSet<City> Cities => Set<City>();
+
+    public DbSet<CatalogItem> CatalogItems => Set<CatalogItem>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
