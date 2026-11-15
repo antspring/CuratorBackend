@@ -2,6 +2,7 @@ using Application.Accounts;
 using Application.Catalogs;
 using Application.Sessions;
 using Infrastructure.Authentication;
+using Infrastructure.Files;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Seeding;
@@ -53,6 +54,7 @@ public static class DependencyInjection
         services.AddScoped<ICatalogReader, CatalogReader>();
 
         services.AddJwtAuthentication(configuration);
+        services.AddFileStorage(configuration);
 
         services.AddHealthChecks()
             .AddNpgSql(connectionString, name: "postgresql");

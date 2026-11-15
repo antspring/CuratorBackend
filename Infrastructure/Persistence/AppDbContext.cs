@@ -1,4 +1,5 @@
 using Domain.Catalogs;
+using Domain.Files;
 using Domain.Users;
 using Infrastructure.Authentication;
 using Infrastructure.Identity;
@@ -20,6 +21,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<City> Cities => Set<City>();
 
     public DbSet<CatalogItem> CatalogItems => Set<CatalogItem>();
+
+    public DbSet<StoredFile> Files => Set<StoredFile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

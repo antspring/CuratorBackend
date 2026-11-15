@@ -10,6 +10,7 @@ public static class ErrorCodes
     public const string Forbidden = "forbidden";
     public const string ResourceNotFound = "resource_not_found";
     public const string AccountExists = "account_exists";
+    public const string FileTooLarge = "file_too_large";
     public const string UnsupportedMediaType = "unsupported_media_type";
     public const string RateLimitExceeded = "rate_limit_exceeded";
     public const string InternalError = "internal_error";
@@ -20,6 +21,7 @@ public static class ErrorCodes
         StatusCodes.Status401Unauthorized => Unauthenticated,
         StatusCodes.Status403Forbidden => Forbidden,
         StatusCodes.Status404NotFound => ResourceNotFound,
+        StatusCodes.Status413PayloadTooLarge => FileTooLarge,
         StatusCodes.Status415UnsupportedMediaType => UnsupportedMediaType,
         StatusCodes.Status429TooManyRequests => RateLimitExceeded,
         _ => InternalError,

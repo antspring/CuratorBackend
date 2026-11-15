@@ -8,11 +8,20 @@
       ConnectionStrings__Database: >-
         Host=postgres;Port=5432;Database=${POSTGRES_DB:?};Username=${POSTGRES_USER:?};Password=${POSTGRES_PASSWORD:?};GSS Encryption Mode=Disable
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?}
+      FileStorage__ServiceUrl: http://storage:9000
+      FileStorage__Region: us-east-1
+      FileStorage__Bucket: ${FILE_STORAGE_BUCKET:?}
+      FileStorage__AccessKey: ${FILE_STORAGE_ACCESS_KEY:?}
+      FileStorage__SecretKey: ${FILE_STORAGE_SECRET_KEY:?}
+      FileStorage__PublicBaseUrl: http://localhost:${FILE_STORAGE_PORT:-9000}/${FILE_STORAGE_BUCKET:?}
+      FileStorage__ForcePathStyle: "true"
     ports:
       - "${API_PORT:-8080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
+      storage-init:
+        condition: service_completed_successfully
 
   postgres:
     image: postgres:18
@@ -33,5 +42,39 @@
       retries: 10
       start_period: 10s
 
+  storage:
+    image: rustfs/rustfs:1.0.5
+    environment:
+      RUSTFS_ACCESS_KEY: ${FILE_STORAGE_ACCESS_KEY:?}
+      RUSTFS_SECRET_KEY: ${FILE_STORAGE_SECRET_KEY:?}
+    ports:
+      - "${FILE_STORAGE_PORT:-9000}:9000"
+    volumes:
+      - storage-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:9000/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 5s
+
+  storage-init:
+    image: amazon/aws-cli:2.40.3
+    environment:
+      AWS_ACCESS_KEY_ID: ${FILE_STORAGE_ACCESS_KEY:?}
+      AWS_SECRET_ACCESS_KEY: ${FILE_STORAGE_SECRET_KEY:?}
+      AWS_DEFAULT_REGION: us-east-1
+      AWS_ENDPOINT_URL: http://storage:9000
+      BUCKET: ${FILE_STORAGE_BUCKET:?}
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        aws s3api head-bucket --bucket "$$BUCKET" 2>/dev/null || aws s3api create-bucket --bucket "$$BUCKET"
+        aws s3api put-bucket-policy --bucket "$$BUCKET" --policy "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::$$BUCKET/*\"]}]}"
+    depends_on:
+      storage:
+        condition: service_healthy
+
 volumes:
   postgres-data:
+  storage-data:
