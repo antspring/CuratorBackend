@@ -37,44 +37,42 @@ public class UserProfileTests
     }
 
     [Theory]
-    [InlineData("", "Иванова", nameof(UserProfile.FirstName))]
-    [InlineData("Анна", "   ", nameof(UserProfile.LastName))]
-    public void Constructor_RejectsEmptyNames(string firstName, string lastName, string field)
+    [InlineData("", "Иванова", nameof(PersonalData.FirstName))]
+    [InlineData("Анна", "   ", nameof(PersonalData.LastName))]
+    public void PersonalData_RejectsEmptyNames(string firstName, string lastName, string field)
     {
-        var exception = Assert.Throws<DomainException>(
-            () => new UserProfile(UserId, Personal(firstName, lastName), Now));
+        var exception = Assert.Throws<DomainException>(() => Personal(firstName, lastName));
 
         Assert.Equal(field, exception.Field);
     }
 
     [Fact]
-    public void Constructor_RejectsTooLongLastName()
+    public void PersonalData_RejectsTooLongLastName()
     {
-        var lastName = new string('а', UserProfile.NameMaxLength + 1);
+        var lastName = new string('а', PersonalData.NameMaxLength + 1);
 
-        var exception = Assert.Throws<DomainException>(() => new UserProfile(UserId, Personal(lastName: lastName), Now));
+        var exception = Assert.Throws<DomainException>(() => Personal(lastName: lastName));
 
-        Assert.Equal(nameof(UserProfile.LastName), exception.Field);
+        Assert.Equal(nameof(PersonalData.LastName), exception.Field);
     }
 
     [Theory]
-    [InlineData(UserProfile.MinAge - 1)]
-    [InlineData(UserProfile.MaxAge + 1)]
-    public void Constructor_RejectsAgeOutOfRange(int age)
+    [InlineData(PersonalData.MinAge - 1)]
+    [InlineData(PersonalData.MaxAge + 1)]
+    public void PersonalData_RejectsAgeOutOfRange(int age)
     {
-        var exception = Assert.Throws<DomainException>(() => new UserProfile(UserId, Personal(age: age), Now));
+        var exception = Assert.Throws<DomainException>(() => Personal(age: age));
 
-        Assert.Equal(nameof(UserProfile.Age), exception.Field);
+        Assert.Equal(nameof(PersonalData.Age), exception.Field);
     }
 
     [Fact]
-    public void Constructor_RejectsEmptyCatalogIds()
+    public void PersonalData_RejectsEmptyCatalogIds()
     {
-        var personal = Personal() with { CityId = Guid.Empty };
+        var exception = Assert.Throws<DomainException>(
+            () => new PersonalData("Анна", "Иванова", 25, Guid.Empty, LanguageId, null));
 
-        var exception = Assert.Throws<DomainException>(() => new UserProfile(UserId, personal, Now));
-
-        Assert.Equal(nameof(UserProfile.CityId), exception.Field);
+        Assert.Equal(nameof(PersonalData.CityId), exception.Field);
     }
 
     [Fact]

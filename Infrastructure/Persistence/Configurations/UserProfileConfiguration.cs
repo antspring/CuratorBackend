@@ -15,8 +15,8 @@ internal sealed class UserProfileConfiguration : IEntityTypeConfiguration<UserPr
         builder.HasKey(profile => profile.UserId);
 
         builder.Property(profile => profile.UserId).ValueGeneratedNever();
-        builder.Property(profile => profile.FirstName).HasMaxLength(UserProfile.NameMaxLength);
-        builder.Property(profile => profile.LastName).HasMaxLength(UserProfile.NameMaxLength);
+        builder.Property(profile => profile.FirstName).HasMaxLength(PersonalData.NameMaxLength);
+        builder.Property(profile => profile.LastName).HasMaxLength(PersonalData.NameMaxLength);
 
         builder.HasOne<ApplicationUser>()
             .WithOne()

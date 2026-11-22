@@ -4,7 +4,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Persistence;
 
-internal sealed class CatalogReader(AppDbContext db) : ICatalogReader
+internal sealed class CatalogReader(AppDbContext db) : ICatalogReader, ICatalogLookup
 {
     public async Task<IReadOnlyList<CatalogEntry>> ListAsync(
         string kind,
@@ -34,6 +34,31 @@ internal sealed class CatalogReader(AppDbContext db) : ICatalogReader
             .Take(take)
             .Select(row => new CatalogEntry(row.Id, row.Name, row.SortOrder))
             .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, string>> FindKindsAsync(
+        IReadOnlyCollection<Guid> ids,
+        CancellationToken cancellationToken)
+    {
+        var skills = await db.Skills.AsNoTracking()
+            .Where(skill => ids.Contains(skill.Id))
+            .Select(skill => skill.Id)
+            .ToListAsync(cancellationToken);
+
+        var cities = await db.Cities.AsNoTracking()
+            .Where(city => ids.Contains(city.Id))
+            .Select(city => city.Id)
+            .ToListAsync(cancellationToken);
+
+        var items = await db.CatalogItems.AsNoTracking()
+            .Where(item => ids.Contains(item.Id))
+            .Select(item => new { item.Id, item.Kind })
+            .ToListAsync(cancellationToken);
+
+        return skills.Select(id => KeyValuePair.Create(id, CatalogKinds.Skills))
+            .Concat(cities.Select(id => KeyValuePair.Create(id, CatalogKinds.Cities)))
+            .Concat(items.Select(item => KeyValuePair.Create(item.Id, item.Kind)))
+            .ToDictionary();
     }
 
     private IQueryable<Row> Rows(string kind) => kind switch

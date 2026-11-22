@@ -191,6 +191,99 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("files", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Mentees.MenteeProfile", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("AvailabilityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("availability_id");
+
+                    b.Property<decimal?>("BudgetFrom")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("budget_from");
+
+                    b.Property<decimal?>("BudgetTo")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("budget_to");
+
+                    b.Property<Guid>("FormatId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("format_id");
+
+                    b.Property<string>("Goal")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("goal");
+
+                    b.Property<Guid>("GoalDeadlineId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("goal_deadline_id");
+
+                    b.Property<Guid>("SkillLevelId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("skill_level_id");
+
+                    b.HasKey("UserId")
+                        .HasName("pk_mentee_profiles");
+
+                    b.HasIndex("AvailabilityId")
+                        .HasDatabaseName("ix_mentee_profiles_availability_id");
+
+                    b.HasIndex("FormatId")
+                        .HasDatabaseName("ix_mentee_profiles_format_id");
+
+                    b.HasIndex("GoalDeadlineId")
+                        .HasDatabaseName("ix_mentee_profiles_goal_deadline_id");
+
+                    b.HasIndex("SkillLevelId")
+                        .HasDatabaseName("ix_mentee_profiles_skill_level_id");
+
+                    b.ToTable("mentee_profiles", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Mentees.MenteeSkill", b =>
+                {
+                    b.Property<Guid>("MenteeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mentee_id");
+
+                    b.Property<Guid>("SkillId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("skill_id");
+
+                    b.HasKey("MenteeId", "SkillId")
+                        .HasName("pk_mentee_skills");
+
+                    b.HasIndex("SkillId")
+                        .HasDatabaseName("ix_mentee_skills_skill_id");
+
+                    b.ToTable("mentee_skills", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Mentees.MenteeTask", b =>
+                {
+                    b.Property<Guid>("MenteeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mentee_id");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.HasKey("MenteeId", "TaskId")
+                        .HasName("pk_mentee_tasks");
+
+                    b.HasIndex("TaskId")
+                        .HasDatabaseName("ix_mentee_tasks_task_id");
+
+                    b.ToTable("mentee_tasks", (string)null);
+                });
+
             modelBuilder.Entity("Domain.Users.UserProfile", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -578,6 +671,78 @@ namespace Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_files_users_owner_id");
                 });
 
+            modelBuilder.Entity("Domain.Mentees.MenteeProfile", b =>
+                {
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("AvailabilityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_profiles_catalog_items_availability_id");
+
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("FormatId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_profiles_catalog_items_format_id");
+
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("GoalDeadlineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_profiles_catalog_items_goal_deadline_id");
+
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("SkillLevelId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_profiles_catalog_items_skill_level_id");
+
+                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
+                        .WithOne()
+                        .HasForeignKey("Domain.Mentees.MenteeProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_profiles_users_user_id");
+                });
+
+            modelBuilder.Entity("Domain.Mentees.MenteeSkill", b =>
+                {
+                    b.HasOne("Domain.Mentees.MenteeProfile", null)
+                        .WithMany("Skills")
+                        .HasForeignKey("MenteeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_skills_mentee_profiles_mentee_id");
+
+                    b.HasOne("Domain.Catalogs.Skill", null)
+                        .WithMany()
+                        .HasForeignKey("SkillId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_skills_skills_skill_id");
+                });
+
+            modelBuilder.Entity("Domain.Mentees.MenteeTask", b =>
+                {
+                    b.HasOne("Domain.Mentees.MenteeProfile", null)
+                        .WithMany("Tasks")
+                        .HasForeignKey("MenteeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_tasks_mentee_profiles_mentee_id");
+
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_tasks_catalog_items_task_id");
+                });
+
             modelBuilder.Entity("Domain.Users.UserProfile", b =>
                 {
                     b.HasOne("Domain.Catalogs.City", null)
@@ -673,6 +838,13 @@ namespace Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_user_tokens_users_user_id");
+                });
+
+            modelBuilder.Entity("Domain.Mentees.MenteeProfile", b =>
+                {
+                    b.Navigation("Skills");
+
+                    b.Navigation("Tasks");
                 });
 #pragma warning restore 612, 618
         }
