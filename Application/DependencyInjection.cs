@@ -2,6 +2,7 @@ using Application.Accounts;
 using Application.Catalogs;
 using Application.Files;
 using Application.Mentees;
+using Application.Mentors;
 using Application.Profiles;
 using Application.Sessions;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +21,7 @@ public static class DependencyInjection
         services.AddScoped<FileService>();
         services.AddScoped<ProfileInputValidator>();
         services.AddScoped<MenteeProfileService>();
+        services.AddScoped<MentorProfileService>();
 
         return services;
     }

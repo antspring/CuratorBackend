@@ -2,6 +2,8 @@ namespace Domain.Common;
 
 public static class Require
 {
+    public const decimal MaxAmount = 9_999_999_999.99m;
+
     public static string Text(string? value, int minLength, int maxLength, string field)
     {
         var trimmed = value?.Trim();
@@ -43,4 +45,9 @@ public static class Require
 
         return ids;
     }
+
+    public static decimal Amount(decimal value, string field) =>
+        value >= 0 && value <= MaxAmount && decimal.Round(value, 2) == value
+            ? value
+            : throw new DomainException(field, $"Сумма в рублях от 0 до {MaxAmount}, не больше двух знаков после запятой.");
 }

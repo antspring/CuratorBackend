@@ -1,6 +1,7 @@
 using Domain.Catalogs;
 using Domain.Files;
 using Domain.Mentees;
+using Domain.Mentors;
 using Domain.Users;
 using Infrastructure.Authentication;
 using Infrastructure.Identity;
@@ -26,6 +27,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options)
     public DbSet<StoredFile> Files => Set<StoredFile>();
 
     public DbSet<MenteeProfile> MenteeProfiles => Set<MenteeProfile>();
+
+    public DbSet<MentorProfile> MentorProfiles => Set<MentorProfile>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

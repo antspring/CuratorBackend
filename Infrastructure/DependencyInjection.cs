@@ -1,11 +1,13 @@
 using Application.Accounts;
 using Application.Catalogs;
 using Application.Mentees;
+using Application.Mentors;
 using Application.Sessions;
 using Infrastructure.Authentication;
 using Infrastructure.Files;
 using Infrastructure.Identity;
 using Infrastructure.Mentees;
+using Infrastructure.Mentors;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Seeding;
 using Infrastructure.Profiles;
@@ -59,6 +61,7 @@ public static class DependencyInjection
         services.AddScoped<ICatalogLookup>(provider => provider.GetRequiredService<CatalogReader>());
         services.AddScoped<PersonalProfileStore>();
         services.AddScoped<IMenteeProfileStore, MenteeProfileStore>();
+        services.AddScoped<IMentorProfileStore, MentorProfileStore>();
 
         services.AddJwtAuthentication(configuration);
         services.AddFileStorage(configuration);

@@ -8,7 +8,6 @@ public sealed class MenteeAnswers
     public const int MaxTasks = 20;
     public const int GoalMinLength = 20;
     public const int GoalMaxLength = 2000;
-    public const decimal MaxBudget = 9_999_999_999.99m;
 
     public MenteeAnswers(
         IEnumerable<Guid> skillIds,
@@ -26,8 +25,8 @@ public sealed class MenteeAnswers
         TaskIds = Require.Ids(taskIds, 1, MaxTasks, nameof(TaskIds));
         FormatId = Require.Id(formatId, nameof(FormatId));
         AvailabilityId = Require.Id(availabilityId, nameof(AvailabilityId));
-        BudgetFrom = RequireBudget(budgetFrom, nameof(BudgetFrom));
-        BudgetTo = RequireBudget(budgetTo, nameof(BudgetTo));
+        BudgetFrom = budgetFrom is { } from ? Require.Amount(from, nameof(BudgetFrom)) : null;
+        BudgetTo = budgetTo is { } to ? Require.Amount(to, nameof(BudgetTo)) : null;
         Goal = Require.Text(goal, GoalMinLength, GoalMaxLength, nameof(Goal));
         GoalDeadlineId = Require.Id(goalDeadlineId, nameof(GoalDeadlineId));
 
@@ -54,9 +53,4 @@ public sealed class MenteeAnswers
     public string Goal { get; }
 
     public Guid GoalDeadlineId { get; }
-
-    private static decimal? RequireBudget(decimal? value, string field) =>
-        value is null || (value >= 0 && value <= MaxBudget && decimal.Round(value.Value, 2) == value)
-            ? value
-            : throw new DomainException(field, $"Сумма в рублях от 0 до {MaxBudget}, не больше двух знаков после запятой.");
 }
