@@ -19,13 +19,7 @@ public sealed class AccountsController(AccountService accountService) : Controll
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<AccountResponse>> Register(RegisterRequest request, CancellationToken cancellationToken)
     {
-        var command = new RegisterAccountCommand(
-            request.Email,
-            request.Password,
-            request.FirstName,
-            request.LastName,
-            request.Timezone,
-            request.Roles);
+        var command = new RegisterAccountCommand(request.Email, request.Password);
 
         var result = await accountService.RegisterAsync(command, cancellationToken);
 

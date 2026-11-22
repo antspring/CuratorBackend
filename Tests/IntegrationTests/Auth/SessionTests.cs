@@ -10,14 +10,14 @@ public class SessionTests(ApiFactory factory) : IClassFixture<ApiFactory>
     [Fact]
     public async Task Login_ReturnsTokensThatAuthorizeMe()
     {
-        var tokens = await client.RegisterAndLoginAsync("mentor");
+        var tokens = await client.RegisterAndLoginAsync();
 
         var me = await client.GetMeAsync(tokens.AccessToken);
 
         Assert.Equal(HttpStatusCode.OK, me.StatusCode);
         var account = await me.ReadAsync<AccountDto>();
         Assert.Equal(tokens.Account.Id, account.Id);
-        Assert.Equal(["mentor"], account.Roles);
+        Assert.Empty(account.Roles);
         Assert.InRange(tokens.AccessTokenExpiresAt - DateTimeOffset.UtcNow, TimeSpan.FromMinutes(14), TimeSpan.FromMinutes(15));
     }
 

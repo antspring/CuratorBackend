@@ -1,6 +1,4 @@
 using Application.Accounts;
-using Domain.Users;
-using Infrastructure.Persistence;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
@@ -8,7 +6,6 @@ using Npgsql;
 namespace Infrastructure.Identity;
 
 internal sealed class AccountStore(
-    AppDbContext dbContext,
     UserManager<ApplicationUser> userManager,
     IPasswordHasher<ApplicationUser> passwordHasher) : IAccountStore
 {
@@ -60,21 +57,14 @@ internal sealed class AccountStore(
         return new Account(user.Id, user.Email!, roles.Order().ToList());
     }
 
-    public async Task<RegisterAccountResult> CreateAsync(
-        string email,
-        string password,
-        IReadOnlyList<string> roles,
-        UserProfile profile,
-        CancellationToken cancellationToken)
+    public async Task<RegisterAccountResult> CreateAsync(string email, string password, CancellationToken cancellationToken)
     {
         var user = new ApplicationUser
         {
-            Id = profile.UserId,
+            Id = Guid.CreateVersion7(),
             UserName = email,
             Email = email,
         };
-
-        await using var transaction = await dbContext.Database.BeginTransactionAsync(cancellationToken);
 
         try
         {
@@ -86,24 +76,12 @@ internal sealed class AccountStore(
                     ? new RegisterAccountResult.EmailAlreadyExists()
                     : new RegisterAccountResult.PasswordRejected(created.Errors.Select(error => error.Description).ToList());
             }
-
-            var rolesAdded = await userManager.AddToRolesAsync(user, roles);
-
-            if (!rolesAdded.Succeeded)
-            {
-                throw new InvalidOperationException(
-                    $"Не удалось назначить роли: {string.Join("; ", rolesAdded.Errors.Select(error => error.Code))}");
-            }
-
-            dbContext.UserProfiles.Add(profile);
-            await dbContext.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
         }
         catch (DbUpdateException exception) when (exception.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         {
             return new RegisterAccountResult.EmailAlreadyExists();
         }
 
-        return new RegisterAccountResult.Registered(new Account(user.Id, email, roles));
+        return new RegisterAccountResult.Registered(new Account(user.Id, email, []));
     }
 }
