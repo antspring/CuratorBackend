@@ -1,17 +1,19 @@
 using Domain.Common;
+using Domain.Files;
 
 namespace Domain.Users;
 
 public sealed class UserProfile
 {
     public const int NameMaxLength = 100;
-    public const int TimezoneMaxLength = 100;
+    public const int MinAge = 14;
+    public const int MaxAge = 100;
 
     private UserProfile()
     {
     }
 
-    public UserProfile(Guid userId, string firstName, string? lastName, string timezone, DateTimeOffset now)
+    public UserProfile(Guid userId, PersonalData personal, DateTimeOffset now)
     {
         if (userId == Guid.Empty)
         {
@@ -20,55 +22,64 @@ public sealed class UserProfile
 
         UserId = userId;
         CreatedAt = now.ToUniversalTime();
-        Rename(firstName, lastName, now);
-        ChangeTimezone(timezone, now);
+        Update(personal, now);
     }
 
     public Guid UserId { get; private set; }
 
     public string FirstName { get; private set; } = null!;
 
-    public string? LastName { get; private set; }
+    public string LastName { get; private set; } = null!;
 
-    public string Timezone { get; private set; } = null!;
+    public short Age { get; private set; }
+
+    public Guid CityId { get; private set; }
+
+    public Guid LanguageId { get; private set; }
+
+    public Guid? PhotoFileId { get; private set; }
 
     public DateTimeOffset CreatedAt { get; private set; }
 
     public DateTimeOffset UpdatedAt { get; private set; }
 
-    public void Rename(string firstName, string? lastName, DateTimeOffset now)
+    public void Update(PersonalData personal, DateTimeOffset now)
     {
-        FirstName = RequireName(firstName, nameof(FirstName));
-        LastName = string.IsNullOrWhiteSpace(lastName) ? null : LimitName(lastName.Trim(), nameof(LastName));
-        UpdatedAt = now.ToUniversalTime();
-    }
+        ArgumentNullException.ThrowIfNull(personal);
 
-    public void ChangeTimezone(string timezone, DateTimeOffset now)
-    {
-        var trimmed = timezone?.Trim();
-
-        if (string.IsNullOrEmpty(trimmed) || trimmed.Length > TimezoneMaxLength
-            || !TimeZoneInfo.TryFindSystemTimeZoneById(trimmed, out _))
+        if (personal.Age is < MinAge or > MaxAge)
         {
-            throw new DomainException(nameof(Timezone), "Укажите часовой пояс IANA, например Asia/Yekaterinburg.");
+            throw new DomainException(nameof(Age), $"Возраст — от {MinAge} до {MaxAge} лет.");
         }
 
-        Timezone = trimmed;
+        if (personal.Photo is { } photo && (photo.OwnerId != UserId || photo.Purpose != FilePurposes.Avatar))
+        {
+            throw new DomainException(nameof(PhotoFileId), "Фото должно быть вашим загруженным аватаром.");
+        }
+
+        FirstName = RequireName(personal.FirstName, nameof(FirstName));
+        LastName = RequireName(personal.LastName, nameof(LastName));
+        Age = (short)personal.Age;
+        CityId = RequireId(personal.CityId, nameof(CityId));
+        LanguageId = RequireId(personal.LanguageId, nameof(LanguageId));
+        PhotoFileId = personal.Photo?.Id;
         UpdatedAt = now.ToUniversalTime();
     }
 
     private static string RequireName(string? value, string field)
     {
-        if (string.IsNullOrWhiteSpace(value))
+        var trimmed = value?.Trim();
+
+        if (string.IsNullOrEmpty(trimmed))
         {
-            throw new DomainException(field, "Имя не может быть пустым.");
+            throw new DomainException(field, "Поле не может быть пустым.");
         }
 
-        return LimitName(value.Trim(), field);
+        return trimmed.Length <= NameMaxLength
+            ? trimmed
+            : throw new DomainException(field, $"Не длиннее {NameMaxLength} символов.");
     }
 
-    private static string LimitName(string value, string field) =>
-        value.Length <= NameMaxLength
-            ? value
-            : throw new DomainException(field, $"Не длиннее {NameMaxLength} символов.");
+    private static Guid RequireId(Guid value, string field) =>
+        value != Guid.Empty ? value : throw new DomainException(field, "Значение не выбрано.");
 }

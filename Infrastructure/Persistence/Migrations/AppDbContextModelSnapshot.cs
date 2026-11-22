@@ -197,6 +197,14 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
+                    b.Property<short>("Age")
+                        .HasColumnType("smallint")
+                        .HasColumnName("age");
+
+                    b.Property<Guid>("CityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("city_id");
+
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_at");
@@ -207,16 +215,19 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("first_name");
 
+                    b.Property<Guid>("LanguageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("language_id");
+
                     b.Property<string>("LastName")
+                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("last_name");
 
-                    b.Property<string>("Timezone")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("timezone");
+                    b.Property<Guid?>("PhotoFileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("photo_file_id");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -224,6 +235,15 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("UserId")
                         .HasName("pk_user_profiles");
+
+                    b.HasIndex("CityId")
+                        .HasDatabaseName("ix_user_profiles_city_id");
+
+                    b.HasIndex("LanguageId")
+                        .HasDatabaseName("ix_user_profiles_language_id");
+
+                    b.HasIndex("PhotoFileId")
+                        .HasDatabaseName("ix_user_profiles_photo_file_id");
 
                     b.ToTable("user_profiles", (string)null);
                 });
@@ -560,6 +580,26 @@ namespace Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Domain.Users.UserProfile", b =>
                 {
+                    b.HasOne("Domain.Catalogs.City", null)
+                        .WithMany()
+                        .HasForeignKey("CityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_profiles_cities_city_id");
+
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("LanguageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_profiles_catalog_items_language_id");
+
+                    b.HasOne("Domain.Files.StoredFile", null)
+                        .WithMany()
+                        .HasForeignKey("PhotoFileId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_user_profiles_files_photo_file_id");
+
                     b.HasOne("Infrastructure.Identity.ApplicationUser", null)
                         .WithOne()
                         .HasForeignKey("Domain.Users.UserProfile", "UserId")
