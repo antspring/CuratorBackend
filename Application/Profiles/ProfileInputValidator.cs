@@ -42,11 +42,11 @@ public sealed class ProfileInputValidator(ICatalogLookup catalogs, IFileMetadata
     public async Task EnsureCatalogReferencesAsync(IReadOnlyCollection<CatalogReference> references, CancellationToken cancellationToken)
     {
         var ids = references.SelectMany(reference => reference.Ids).Distinct().ToList();
-        var kinds = await catalogs.FindKindsAsync(ids, cancellationToken);
+        var found = await catalogs.FindAsync(ids, cancellationToken);
 
         foreach (var reference in references)
         {
-            if (reference.Ids.Any(id => kinds.GetValueOrDefault(id) != reference.Kind))
+            if (reference.Ids.Any(id => found.GetValueOrDefault(id)?.Kind != reference.Kind))
             {
                 throw new DomainException(reference.Field, "Значение не найдено в справочнике.");
             }
