@@ -14,7 +14,7 @@ internal sealed class DomainExceptionHandler(IProblemDetailsService problemDetai
             return false;
         }
 
-        var field = JsonNamingPolicy.CamelCase.ConvertName(domainException.Field);
+        var field = string.Join('.', domainException.Field.Split('.').Select(JsonNamingPolicy.CamelCase.ConvertName));
         var problem = new ValidationProblemDetails(new Dictionary<string, string[]>
         {
             [field] = [domainException.Message],

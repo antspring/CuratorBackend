@@ -191,11 +191,213 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("files", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Mentees.MenteeProfile", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("AvailabilityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("availability_id");
+
+                    b.Property<decimal?>("BudgetFrom")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("budget_from");
+
+                    b.Property<decimal?>("BudgetTo")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("budget_to");
+
+                    b.Property<Guid>("FormatId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("format_id");
+
+                    b.Property<string>("Goal")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("goal");
+
+                    b.Property<Guid>("GoalDeadlineId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("goal_deadline_id");
+
+                    b.Property<Guid>("SkillLevelId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("skill_level_id");
+
+                    b.HasKey("UserId")
+                        .HasName("pk_mentee_profiles");
+
+                    b.HasIndex("AvailabilityId")
+                        .HasDatabaseName("ix_mentee_profiles_availability_id");
+
+                    b.HasIndex("FormatId")
+                        .HasDatabaseName("ix_mentee_profiles_format_id");
+
+                    b.HasIndex("GoalDeadlineId")
+                        .HasDatabaseName("ix_mentee_profiles_goal_deadline_id");
+
+                    b.HasIndex("SkillLevelId")
+                        .HasDatabaseName("ix_mentee_profiles_skill_level_id");
+
+                    b.ToTable("mentee_profiles", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Mentees.MenteeSkill", b =>
+                {
+                    b.Property<Guid>("MenteeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mentee_id");
+
+                    b.Property<Guid>("SkillId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("skill_id");
+
+                    b.HasKey("MenteeId", "SkillId")
+                        .HasName("pk_mentee_skills");
+
+                    b.HasIndex("SkillId")
+                        .HasDatabaseName("ix_mentee_skills_skill_id");
+
+                    b.ToTable("mentee_skills", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Mentees.MenteeTask", b =>
+                {
+                    b.Property<Guid>("MenteeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mentee_id");
+
+                    b.Property<Guid>("TaskId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("task_id");
+
+                    b.HasKey("MenteeId", "TaskId")
+                        .HasName("pk_mentee_tasks");
+
+                    b.HasIndex("TaskId")
+                        .HasDatabaseName("ix_mentee_tasks_task_id");
+
+                    b.ToTable("mentee_tasks", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Mentors.MentorDirection", b =>
+                {
+                    b.Property<Guid>("MentorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mentor_id");
+
+                    b.Property<Guid>("DirectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("direction_id");
+
+                    b.HasKey("MentorId", "DirectionId")
+                        .HasName("pk_mentor_directions");
+
+                    b.HasIndex("DirectionId")
+                        .HasDatabaseName("ix_mentor_directions_direction_id");
+
+                    b.ToTable("mentor_directions", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Mentors.MentorProfile", b =>
+                {
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.Property<Guid>("AvailabilityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("availability_id");
+
+                    b.Property<Guid>("ExperienceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("experience_id");
+
+                    b.Property<Guid>("FormatId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("format_id");
+
+                    b.Property<bool>("HasFreeTrial")
+                        .HasColumnType("boolean")
+                        .HasColumnName("has_free_trial");
+
+                    b.Property<Guid>("PositionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("position_id");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("numeric(12,2)")
+                        .HasColumnName("price");
+
+                    b.Property<Guid>("PricingModelId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("pricing_model_id");
+
+                    b.HasKey("UserId")
+                        .HasName("pk_mentor_profiles");
+
+                    b.HasIndex("AvailabilityId")
+                        .HasDatabaseName("ix_mentor_profiles_availability_id");
+
+                    b.HasIndex("ExperienceId")
+                        .HasDatabaseName("ix_mentor_profiles_experience_id");
+
+                    b.HasIndex("FormatId")
+                        .HasDatabaseName("ix_mentor_profiles_format_id");
+
+                    b.HasIndex("PositionId")
+                        .HasDatabaseName("ix_mentor_profiles_position_id");
+
+                    b.HasIndex("PricingModelId")
+                        .HasDatabaseName("ix_mentor_profiles_pricing_model_id");
+
+                    b.ToTable("mentor_profiles", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Mentors.MentorSkill", b =>
+                {
+                    b.Property<Guid>("MentorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mentor_id");
+
+                    b.Property<Guid>("SkillId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("skill_id");
+
+                    b.Property<Guid>("SkillLevelId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("skill_level_id");
+
+                    b.HasKey("MentorId", "SkillId")
+                        .HasName("pk_mentor_skills");
+
+                    b.HasIndex("SkillId")
+                        .HasDatabaseName("ix_mentor_skills_skill_id");
+
+                    b.HasIndex("SkillLevelId")
+                        .HasDatabaseName("ix_mentor_skills_skill_level_id");
+
+                    b.ToTable("mentor_skills", (string)null);
+                });
+
             modelBuilder.Entity("Domain.Users.UserProfile", b =>
                 {
                     b.Property<Guid>("UserId")
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
+
+                    b.Property<short>("Age")
+                        .HasColumnType("smallint")
+                        .HasColumnName("age");
+
+                    b.Property<Guid>("CityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("city_id");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -207,16 +409,19 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(100)")
                         .HasColumnName("first_name");
 
+                    b.Property<Guid>("LanguageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("language_id");
+
                     b.Property<string>("LastName")
+                        .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("last_name");
 
-                    b.Property<string>("Timezone")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("timezone");
+                    b.Property<Guid?>("PhotoFileId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("photo_file_id");
 
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -224,6 +429,15 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasKey("UserId")
                         .HasName("pk_user_profiles");
+
+                    b.HasIndex("CityId")
+                        .HasDatabaseName("ix_user_profiles_city_id");
+
+                    b.HasIndex("LanguageId")
+                        .HasDatabaseName("ix_user_profiles_language_id");
+
+                    b.HasIndex("PhotoFileId")
+                        .HasDatabaseName("ix_user_profiles_photo_file_id");
 
                     b.ToTable("user_profiles", (string)null);
                 });
@@ -558,8 +772,186 @@ namespace Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_files_users_owner_id");
                 });
 
+            modelBuilder.Entity("Domain.Mentees.MenteeProfile", b =>
+                {
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("AvailabilityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_profiles_catalog_items_availability_id");
+
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("FormatId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_profiles_catalog_items_format_id");
+
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("GoalDeadlineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_profiles_catalog_items_goal_deadline_id");
+
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("SkillLevelId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_profiles_catalog_items_skill_level_id");
+
+                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
+                        .WithOne()
+                        .HasForeignKey("Domain.Mentees.MenteeProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_profiles_users_user_id");
+                });
+
+            modelBuilder.Entity("Domain.Mentees.MenteeSkill", b =>
+                {
+                    b.HasOne("Domain.Mentees.MenteeProfile", null)
+                        .WithMany("Skills")
+                        .HasForeignKey("MenteeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_skills_mentee_profiles_mentee_id");
+
+                    b.HasOne("Domain.Catalogs.Skill", null)
+                        .WithMany()
+                        .HasForeignKey("SkillId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_skills_skills_skill_id");
+                });
+
+            modelBuilder.Entity("Domain.Mentees.MenteeTask", b =>
+                {
+                    b.HasOne("Domain.Mentees.MenteeProfile", null)
+                        .WithMany("Tasks")
+                        .HasForeignKey("MenteeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_tasks_mentee_profiles_mentee_id");
+
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("TaskId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_tasks_catalog_items_task_id");
+                });
+
+            modelBuilder.Entity("Domain.Mentors.MentorDirection", b =>
+                {
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("DirectionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentor_directions_catalog_items_direction_id");
+
+                    b.HasOne("Domain.Mentors.MentorProfile", null)
+                        .WithMany("Directions")
+                        .HasForeignKey("MentorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentor_directions_mentor_profiles_mentor_id");
+                });
+
+            modelBuilder.Entity("Domain.Mentors.MentorProfile", b =>
+                {
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("AvailabilityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentor_profiles_catalog_items_availability_id");
+
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("ExperienceId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentor_profiles_catalog_items_experience_id");
+
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("FormatId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentor_profiles_catalog_items_format_id");
+
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("PositionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentor_profiles_catalog_items_position_id");
+
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("PricingModelId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentor_profiles_catalog_items_pricing_model_id");
+
+                    b.HasOne("Infrastructure.Identity.ApplicationUser", null)
+                        .WithOne()
+                        .HasForeignKey("Domain.Mentors.MentorProfile", "UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentor_profiles_users_user_id");
+                });
+
+            modelBuilder.Entity("Domain.Mentors.MentorSkill", b =>
+                {
+                    b.HasOne("Domain.Mentors.MentorProfile", null)
+                        .WithMany("Skills")
+                        .HasForeignKey("MentorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentor_skills_mentor_profiles_mentor_id");
+
+                    b.HasOne("Domain.Catalogs.Skill", null)
+                        .WithMany()
+                        .HasForeignKey("SkillId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentor_skills_skills_skill_id");
+
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("SkillLevelId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentor_skills_catalog_items_skill_level_id");
+                });
+
             modelBuilder.Entity("Domain.Users.UserProfile", b =>
                 {
+                    b.HasOne("Domain.Catalogs.City", null)
+                        .WithMany()
+                        .HasForeignKey("CityId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_profiles_cities_city_id");
+
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("LanguageId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_user_profiles_catalog_items_language_id");
+
+                    b.HasOne("Domain.Files.StoredFile", null)
+                        .WithMany()
+                        .HasForeignKey("PhotoFileId")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_user_profiles_files_photo_file_id");
+
                     b.HasOne("Infrastructure.Identity.ApplicationUser", null)
                         .WithOne()
                         .HasForeignKey("Domain.Users.UserProfile", "UserId")
@@ -633,6 +1025,20 @@ namespace Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_user_tokens_users_user_id");
+                });
+
+            modelBuilder.Entity("Domain.Mentees.MenteeProfile", b =>
+                {
+                    b.Navigation("Skills");
+
+                    b.Navigation("Tasks");
+                });
+
+            modelBuilder.Entity("Domain.Mentors.MentorProfile", b =>
+                {
+                    b.Navigation("Directions");
+
+                    b.Navigation("Skills");
                 });
 #pragma warning restore 612, 618
         }

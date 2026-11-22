@@ -21,16 +21,8 @@ public static class ApiClient
 
     public static string NewEmail() => $"user.{Guid.NewGuid():N}@example.com";
 
-    public static Task<HttpResponseMessage> RegisterAsync(this HttpClient client, string email, params string[] roles) =>
-        client.PostAsJsonAsync("/api/v1/accounts", new
-        {
-            email,
-            password = Password,
-            firstName = "Анна",
-            lastName = "Иванова",
-            timezone = "Asia/Yekaterinburg",
-            roles = roles.Length == 0 ? ["mentee"] : roles,
-        });
+    public static Task<HttpResponseMessage> RegisterAsync(this HttpClient client, string email) =>
+        client.PostAsJsonAsync("/api/v1/accounts", new { email, password = Password });
 
     public static Task<HttpResponseMessage> LoginAsync(this HttpClient client, string email, string password = Password) =>
         client.PostAsJsonAsync("/api/v1/session", new { email, password });
@@ -56,10 +48,10 @@ public static class ApiClient
         return client.SendAsync(request);
     }
 
-    public static async Task<TokenPairDto> RegisterAndLoginAsync(this HttpClient client, params string[] roles)
+    public static async Task<TokenPairDto> RegisterAndLoginAsync(this HttpClient client)
     {
         var email = NewEmail();
-        (await client.RegisterAsync(email, roles)).EnsureSuccessStatusCode();
+        (await client.RegisterAsync(email)).EnsureSuccessStatusCode();
 
         var login = await client.LoginAsync(email);
         login.EnsureSuccessStatusCode();

@@ -1,11 +1,16 @@
 using Application.Accounts;
 using Application.Catalogs;
+using Application.Mentees;
+using Application.Mentors;
 using Application.Sessions;
 using Infrastructure.Authentication;
 using Infrastructure.Files;
 using Infrastructure.Identity;
+using Infrastructure.Mentees;
+using Infrastructure.Mentors;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Seeding;
+using Infrastructure.Profiles;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -51,7 +56,12 @@ public static class DependencyInjection
 
         services.AddScoped<IAccountStore, AccountStore>();
         services.AddScoped<ITokenService, TokenService>();
-        services.AddScoped<ICatalogReader, CatalogReader>();
+        services.AddScoped<CatalogReader>();
+        services.AddScoped<ICatalogReader>(provider => provider.GetRequiredService<CatalogReader>());
+        services.AddScoped<ICatalogLookup>(provider => provider.GetRequiredService<CatalogReader>());
+        services.AddScoped<PersonalProfileStore>();
+        services.AddScoped<IMenteeProfileStore, MenteeProfileStore>();
+        services.AddScoped<IMentorProfileStore, MentorProfileStore>();
 
         services.AddJwtAuthentication(configuration);
         services.AddFileStorage(configuration);

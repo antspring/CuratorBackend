@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using API.Common;
 using Microsoft.AspNetCore.Mvc.ModelBinding.Metadata;
 
 namespace API.Errors;
@@ -19,6 +20,7 @@ internal static class ProblemDetailsExtensions
                 options.AllowInputFormatterExceptionMessages = false;
                 options.JsonSerializerOptions.UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow;
                 options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter(JsonNamingPolicy.SnakeCaseLower, allowIntegerValues: false));
+                options.JsonSerializerOptions.Converters.Add(new UtcDateTimeOffsetConverter());
             });
 
         return services;

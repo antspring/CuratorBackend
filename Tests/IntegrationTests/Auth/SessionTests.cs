@@ -1,4 +1,5 @@
 using System.Net;
+using System.Text.Json;
 using IntegrationTests.Infrastructure;
 
 namespace IntegrationTests.Auth;
@@ -10,15 +11,28 @@ public class SessionTests(ApiFactory factory) : IClassFixture<ApiFactory>
     [Fact]
     public async Task Login_ReturnsTokensThatAuthorizeMe()
     {
-        var tokens = await client.RegisterAndLoginAsync("mentor");
+        var tokens = await client.RegisterAndLoginAsync();
 
         var me = await client.GetMeAsync(tokens.AccessToken);
 
         Assert.Equal(HttpStatusCode.OK, me.StatusCode);
         var account = await me.ReadAsync<AccountDto>();
         Assert.Equal(tokens.Account.Id, account.Id);
-        Assert.Equal(["mentor"], account.Roles);
+        Assert.Empty(account.Roles);
         Assert.InRange(tokens.AccessTokenExpiresAt - DateTimeOffset.UtcNow, TimeSpan.FromMinutes(14), TimeSpan.FromMinutes(15));
+    }
+
+    [Fact]
+    public async Task Login_ReturnsExpirationsInUtcWithZ()
+    {
+        var email = ApiClient.NewEmail();
+        (await client.RegisterAsync(email)).EnsureSuccessStatusCode();
+
+        var response = await client.LoginAsync(email);
+
+        using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.EndsWith("Z", json.RootElement.GetProperty("accessTokenExpiresAt").GetString());
+        Assert.EndsWith("Z", json.RootElement.GetProperty("refreshTokenExpiresAt").GetString());
     }
 
     [Fact]
