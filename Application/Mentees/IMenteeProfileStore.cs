@@ -1,3 +1,4 @@
+using Application.Profiles;
 using Domain.Mentees;
 using Domain.Users;
 
@@ -7,7 +8,7 @@ public interface IMenteeProfileStore
 {
     Task<MenteeProfileSnapshot?> FindAsync(Guid userId, CancellationToken cancellationToken);
 
-    Task<SaveMenteeProfileOutcome> SaveAsync(
+    Task<SaveProfileOutcome> SaveAsync(
         Guid userId,
         PersonalData personal,
         MenteeAnswers answers,
@@ -16,11 +17,3 @@ public interface IMenteeProfileStore
 }
 
 public sealed record MenteeProfileSnapshot(UserProfile Personal, MenteeProfile Mentee, string? PhotoStorageKey);
-
-public enum SaveMenteeProfileOutcome
-{
-    Saved,
-    AccountNotFound,
-    RoleConflict,
-    Forbidden,
-}

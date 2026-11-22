@@ -8,6 +8,7 @@ using Infrastructure.Identity;
 using Infrastructure.Mentees;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Seeding;
+using Infrastructure.Profiles;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -56,6 +57,7 @@ public static class DependencyInjection
         services.AddScoped<CatalogReader>();
         services.AddScoped<ICatalogReader>(provider => provider.GetRequiredService<CatalogReader>());
         services.AddScoped<ICatalogLookup>(provider => provider.GetRequiredService<CatalogReader>());
+        services.AddScoped<PersonalProfileStore>();
         services.AddScoped<IMenteeProfileStore, MenteeProfileStore>();
 
         services.AddJwtAuthentication(configuration);
