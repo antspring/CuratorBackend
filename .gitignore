@@ -7,4 +7,5 @@ riderModule.iml
 .vs/
 *.user
 .env
+.env.prod
 TestResults/

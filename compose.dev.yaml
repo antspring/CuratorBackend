@@ -4,7 +4,7 @@
       context: .
       dockerfile: API/Dockerfile
     environment:
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
+      ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__Database: >-
         Host=postgres;Port=5432;Database=${POSTGRES_DB:?};Username=${POSTGRES_USER:?};Password=${POSTGRES_PASSWORD:?};GSS Encryption Mode=Disable
       Jwt__SigningKey: ${JWT_SIGNING_KEY:?}
@@ -74,6 +74,12 @@
     depends_on:
       storage:
         condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit:v1.34.0
+    ports:
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
 
 volumes:
   postgres-data:

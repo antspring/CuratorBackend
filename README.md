@@ -40,13 +40,15 @@ API ──► Infrastructure ──► Application ──► Domain
 - [.NET SDK 10](https://dotnet.microsoft.com/download/dotnet/10.0) — версия зафиксирована в `global.json`
 - [Docker](https://www.docker.com/) с Docker Compose
 
-## Быстрый старт в Docker
+## Локальный запуск в Docker
 
 ```bash
 cp .env.example .env
 ```
 
-Задайте в `.env` свой пароль `POSTGRES_PASSWORD` и ключ подписи `JWT_SIGNING_KEY` (не короче 32 символов):
+Если `.env` уже есть, дополните его недостающими переменными из шаблона.
+
+Задайте в `.env` пароль `POSTGRES_PASSWORD`, ключ подписи `JWT_SIGNING_KEY` и ключи `FILE_STORAGE_ACCESS_KEY` и `FILE_STORAGE_SECRET_KEY` для локального хранилища. Ключ подписи должен быть не короче 32 символов:
 
 ```bash
 openssl rand -base64 48
@@ -55,7 +57,7 @@ openssl rand -base64 48
 Затем:
 
 ```bash
-docker compose up -d --build
+docker compose -f compose.dev.yaml up -d --build
 ```
 
 После запуска:
@@ -65,13 +67,20 @@ docker compose up -d --build
 | http://localhost:8080/health | Проверка состояния API и подключения к PostgreSQL |
 | http://localhost:8080/openapi/v1.json | Документ OpenAPI (только в среде Development) |
 | `localhost:5432` | PostgreSQL для IDE и `dotnet ef` |
+| `localhost:9000` | RustFS для хранения аватаров |
+| http://localhost:8025 | Входящие письма в Mailpit |
+| `localhost:1025` | SMTP Mailpit для запуска API из IDE |
+
+Из других контейнеров Compose Mailpit доступен на `mailpit:1025`. Mailpit сохраняет полученные письма в локальном почтовом ящике для разработки.
+
+Для новой базы примените [миграции](#миграции-базы-данных) вручную.
 
 ## Локальный запуск без Docker для API
 
-Поднимите только базу:
+Поднимите локальные сервисы:
 
 ```bash
-docker compose up -d postgres
+docker compose -f compose.dev.yaml up -d postgres storage-init mailpit
 ```
 
 Восстановите локальные инструменты (`dotnet-ef`):
@@ -91,6 +100,8 @@ dotnet user-secrets set "ConnectionStrings:Database" "Host=localhost;Port=5432;D
 ```bash
 dotnet user-secrets set "Jwt:SigningKey" "$(openssl rand -base64 48)" --project API
 ```
+
+Задайте `FileStorage:AccessKey` и `FileStorage:SecretKey` в user secrets со значениями `FILE_STORAGE_ACCESS_KEY` и `FILE_STORAGE_SECRET_KEY` из `.env`. Если меняли имя бакета или порт RustFS, задайте также `FileStorage:Bucket`, `FileStorage:ServiceUrl` и `FileStorage:PublicBaseUrl`.
 
 Запустите API:
 
@@ -121,8 +132,8 @@ dotnet run --project API
 | Среда | Источник |
 | --- | --- |
 | `dotnet run` / IDE | dotnet user secrets проекта `API` |
-| `docker compose` | файл `.env` (шаблон — `.env.example`); compose передаёт в контейнер только переменные из секции `environment` в `compose.yaml` |
-| Прод | переменные окружения контейнера |
+| Dev Compose | `.env` из `.env.example` |
+| Prod Compose | `.env.prod` из `.env.prod.example` или переменные окружения из хранилища секретов |
 
 ### Origin frontend (CORS)
 
@@ -140,25 +151,21 @@ Origin задаётся без пути и без завершающего `/`: 
 Cors__AllowedOrigins__0=https://curator.example
 ```
 
-При запуске через `docker compose` добавьте в секцию `environment` сервиса `api` в `compose.yaml` строку
-
-```yaml
-      Cors__AllowedOrigins__0: ${CORS_ALLOWED_ORIGIN}
-```
-
-и задайте `CORS_ALLOWED_ORIGIN` в `.env`. Без этой строки compose не передаст значение в контейнер.
+В `compose.prod.yaml` значение передаётся через `CORS_ALLOWED_ORIGIN`.
 
 ## Запуск в проде
 
-1. Соберите образ из `API/Dockerfile`.
-2. Задайте переменные окружения контейнера:
+`compose.prod.yaml` запускает API в среде `Production`. PostgreSQL и S3-совместимое хранилище предоставляются отдельно.
 
-   | Переменная | Значение |
-   | --- | --- |
-   | `ASPNETCORE_ENVIRONMENT` | `Production` |
-   | `ConnectionStrings__Database` | строка подключения к боевой базе |
-   | `Jwt__SigningKey` | отдельный случайный ключ для прода, не короче 32 символов |
-   | `Cors__AllowedOrigins__0` | origin frontend, например `https://curator.example` |
+1. Скопируйте `.env.prod.example` в `.env.prod`. Укажите опубликованный образ с нужным тегом в `CURATOR_API_IMAGE`, строку подключения `DATABASE_CONNECTION_STRING`, отдельный ключ `JWT_SIGNING_KEY`, `CORS_ALLOWED_ORIGIN` и параметры бакета `FILE_STORAGE_*`.
+
+   В шаблоне приведён пример для Yandex Object Storage. Для выбранного хранилища укажите адрес S3 API (`FILE_STORAGE_SERVICE_URL`), регион (`FILE_STORAGE_REGION`) и режим адресации бакета (`FILE_STORAGE_FORCE_PATH_STYLE`). `FILE_STORAGE_PUBLIC_BASE_URL` задаёт базовый адрес, по которому клиенты открывают аватары.
+
+2. Скачайте образ. Для приватного пакета GitHub Container Registry сначала авторизуйтесь через `docker login ghcr.io` с токеном, у которого есть право `read:packages`.
+
+   ```bash
+   docker compose --env-file .env.prod -f compose.prod.yaml pull api
+   ```
 
 3. Примените миграции вручную до запуска новой версии:
 
@@ -168,11 +175,17 @@ Cors__AllowedOrigins__0=https://curator.example
 
 4. Запустите контейнер и проверьте `GET /health` — ожидается `200 Healthy`.
 
+   ```bash
+   docker compose --env-file .env.prod -f compose.prod.yaml up -d
+   curl -fsS http://localhost:8080/health
+   ```
+
+По умолчанию API слушает `127.0.0.1:8080` на хосте для доступа через reverse proxy. Адрес и порт можно задать через `API_BIND_ADDRESS` и `API_PORT`.
+
 Лимит запросов считается по IP клиента. Если API стоит за reverse proxy или балансировщиком, все запросы
 приходят с IP прокси и делят один лимит — тогда нужно настроить проброс реального IP (`X-Forwarded-For`).
 
-Если приложение не стартует, в логах контейнера будет причина: не задана строка подключения
-или `Jwt:SigningKey` отсутствует либо короче 32 символов.
+Если приложение не стартует, проверьте его логи командой `docker compose --env-file .env.prod -f compose.prod.yaml logs api`.
 
 ## Миграции базы данных
 
