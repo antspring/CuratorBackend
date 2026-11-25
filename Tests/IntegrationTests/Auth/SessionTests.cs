@@ -11,7 +11,7 @@ public class SessionTests(ApiFactory factory) : IClassFixture<ApiFactory>
     [Fact]
     public async Task Login_ReturnsTokensThatAuthorizeMe()
     {
-        var tokens = await client.RegisterAndLoginAsync();
+        var tokens = await client.RegisterAndLoginAsync(factory);
 
         var me = await client.GetMeAsync(tokens.AccessToken);
 
@@ -26,7 +26,7 @@ public class SessionTests(ApiFactory factory) : IClassFixture<ApiFactory>
     public async Task Login_ReturnsExpirationsInUtcWithZ()
     {
         var email = ApiClient.NewEmail();
-        (await client.RegisterAsync(email)).EnsureSuccessStatusCode();
+        (await client.RegisterConfirmedAsync(factory, email)).EnsureSuccessStatusCode();
 
         var response = await client.LoginAsync(email);
 
@@ -39,7 +39,7 @@ public class SessionTests(ApiFactory factory) : IClassFixture<ApiFactory>
     public async Task Login_ResponseIsNotCached()
     {
         var email = ApiClient.NewEmail();
-        (await client.RegisterAsync(email)).EnsureSuccessStatusCode();
+        (await client.RegisterConfirmedAsync(factory, email)).EnsureSuccessStatusCode();
 
         var response = await client.LoginAsync(email);
 
@@ -50,7 +50,7 @@ public class SessionTests(ApiFactory factory) : IClassFixture<ApiFactory>
     public async Task Login_WrongPasswordAndUnknownEmail_ReturnSameError()
     {
         var email = ApiClient.NewEmail();
-        (await client.RegisterAsync(email)).EnsureSuccessStatusCode();
+        (await client.RegisterConfirmedAsync(factory, email)).EnsureSuccessStatusCode();
 
         var wrongPassword = await client.LoginAsync(email, "wrong password!!");
         var unknownEmail = await client.LoginAsync(ApiClient.NewEmail());
@@ -65,7 +65,7 @@ public class SessionTests(ApiFactory factory) : IClassFixture<ApiFactory>
     public async Task Login_AfterFiveFailures_IsLockedOutEvenWithCorrectPassword()
     {
         var email = ApiClient.NewEmail();
-        (await client.RegisterAsync(email)).EnsureSuccessStatusCode();
+        (await client.RegisterConfirmedAsync(factory, email)).EnsureSuccessStatusCode();
 
         for (var attempt = 0; attempt < 5; attempt++)
         {
@@ -89,7 +89,7 @@ public class SessionTests(ApiFactory factory) : IClassFixture<ApiFactory>
     [Fact]
     public async Task Me_WithTamperedToken_ReturnsUnauthorized()
     {
-        var tokens = await client.RegisterAndLoginAsync();
+        var tokens = await client.RegisterAndLoginAsync(factory);
 
         var response = await client.GetMeAsync(tokens.AccessToken[..^2] + "xx");
 
@@ -99,7 +99,7 @@ public class SessionTests(ApiFactory factory) : IClassFixture<ApiFactory>
     [Fact]
     public async Task Refresh_RotatesToken()
     {
-        var tokens = await client.RegisterAndLoginAsync();
+        var tokens = await client.RegisterAndLoginAsync(factory);
 
         var response = await client.RefreshAsync(tokens.RefreshToken);
 
@@ -112,7 +112,7 @@ public class SessionTests(ApiFactory factory) : IClassFixture<ApiFactory>
     [Fact]
     public async Task Refresh_ReusedToken_RevokesWholeSession()
     {
-        var tokens = await client.RegisterAndLoginAsync();
+        var tokens = await client.RegisterAndLoginAsync(factory);
         var refreshed = await (await client.RefreshAsync(tokens.RefreshToken)).ReadAsync<TokenPairDto>();
 
         var reuse = await client.RefreshAsync(tokens.RefreshToken);
@@ -126,7 +126,7 @@ public class SessionTests(ApiFactory factory) : IClassFixture<ApiFactory>
     [Fact]
     public async Task Logout_RevokesRefreshTokenAndIsIdempotent()
     {
-        var tokens = await client.RegisterAndLoginAsync();
+        var tokens = await client.RegisterAndLoginAsync(factory);
 
         var logout = await client.LogoutAsync(tokens.RefreshToken);
         var secondLogout = await client.LogoutAsync(tokens.RefreshToken);

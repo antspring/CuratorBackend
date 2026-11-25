@@ -27,7 +27,7 @@ public class FilesEndpointTests(ApiFactory factory) : IClassFixture<ApiFactory>,
 
     public async Task InitializeAsync()
     {
-        tokens = await client.RegisterAndLoginAsync();
+        tokens = await client.RegisterAndLoginAsync(factory);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
     }
 
@@ -155,7 +155,7 @@ public class FilesEndpointTests(ApiFactory factory) : IClassFixture<ApiFactory>,
     {
         var uploaded = await (await UploadAsync(Png, "avatar.png")).ReadAsync<FileDto>();
         var stranger = factory.CreateClient();
-        var strangerTokens = await stranger.RegisterAndLoginAsync();
+        var strangerTokens = await stranger.RegisterAndLoginAsync(factory);
         stranger.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", strangerTokens.AccessToken);
 
         var response = await stranger.GetAsync($"/api/v1/files/{uploaded.Id}");

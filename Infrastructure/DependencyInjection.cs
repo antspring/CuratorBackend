@@ -11,6 +11,7 @@ using Infrastructure.Mentors;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Seeding;
 using Infrastructure.Profiles;
+using Infrastructure.Registration;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -54,6 +55,16 @@ public static class DependencyInjection
             .AddRoles<IdentityRole<Guid>>()
             .AddEntityFrameworkStores<AppDbContext>();
 
+        services.AddOptions<SmtpOptions>().Bind(configuration.GetSection("Smtp"))
+            .ValidateDataAnnotations()
+            .Validate(options => string.IsNullOrWhiteSpace(options.Username) == string.IsNullOrWhiteSpace(options.Password),
+                "Укажите оба параметра SMTP-аутентификации.")
+            .Validate(options => string.IsNullOrEmpty(options.Username) || options.StartTls,
+                "SMTP-аутентификация требует STARTTLS.")
+            .ValidateOnStart();
+        services.AddSingleton<VerificationCodes>();
+        services.AddHostedService<RegistrationMailWorker>();
+        services.AddScoped<IRegistrationStore, RegistrationStore>();
         services.AddScoped<IAccountStore, AccountStore>();
         services.AddScoped<ITokenService, TokenService>();
         services.AddScoped<CatalogReader>();
