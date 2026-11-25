@@ -31,7 +31,7 @@ public static class ProfileTestData
     public static async Task<(HttpClient Client, TokenPairDto Tokens)> SignedInClientAsync(this ApiFactory factory)
     {
         var client = factory.CreateClient();
-        var tokens = await client.RegisterAndLoginAsync();
+        var tokens = await client.RegisterAndLoginAsync(factory);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
 
         return (client, tokens);

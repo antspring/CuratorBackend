@@ -5,6 +5,8 @@ public static class ErrorCodes
     public const string ValidationFailed = "validation_failed";
     public const string InvalidCursor = "invalid_cursor";
     public const string Unauthenticated = "unauthenticated";
+    public const string InvalidVerificationCode = "invalid_verification_code";
+    public const string VerificationUnavailable = "verification_unavailable";
     public const string InvalidCredentials = "invalid_credentials";
     public const string InvalidRefreshToken = "invalid_refresh_token";
     public const string Forbidden = "forbidden";

@@ -570,6 +570,63 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("Infrastructure.Registration.PendingRegistration", b =>
+                {
+                    b.Property<string>("NormalizedEmail")
+                        .HasColumnType("text")
+                        .HasColumnName("normalized_email");
+
+                    b.Property<int>("AttemptsLeft")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts_left");
+
+                    b.Property<Guid>("CodeNonce")
+                        .HasColumnType("uuid")
+                        .HasColumnName("code_nonce");
+
+                    b.Property<DateTimeOffset?>("DeliveryDueAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("delivery_due_at");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("email");
+
+                    b.Property<DateTimeOffset>("ExpiresAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expires_at");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("password_hash");
+
+                    b.Property<DateTimeOffset>("ResendAvailableAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resend_available_at");
+
+                    b.Property<Guid>("VerificationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("verification_id");
+
+                    b.HasKey("NormalizedEmail")
+                        .HasName("pk_pending_registrations");
+
+                    b.HasIndex("DeliveryDueAt")
+                        .HasDatabaseName("ix_pending_registrations_delivery_due_at")
+                        .HasFilter("delivery_due_at IS NOT NULL");
+
+                    b.HasIndex("ExpiresAt")
+                        .HasDatabaseName("ix_pending_registrations_expires_at");
+
+                    b.HasIndex("VerificationId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_pending_registrations_verification_id");
+
+                    b.ToTable("pending_registrations", (string)null);
+                });
+
             modelBuilder.Entity("Microsoft.AspNetCore.Identity.IdentityRole<System.Guid>", b =>
                 {
                     b.Property<Guid>("Id")
