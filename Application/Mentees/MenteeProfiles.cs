@@ -1,5 +1,6 @@
-using Domain.Mentees;
+using Application.Catalogs;
 using Application.Profiles;
+using Domain.Mentees;
 using Domain.Users;
 
 namespace Application.Mentees;
@@ -48,9 +49,11 @@ public sealed record MenteeProfileView(
     string Goal,
     Guid GoalDeadlineId,
     IReadOnlyList<MenteeGoalChoice> Goals,
-    DateTimeOffset UpdatedAt)
+    DateTimeOffset UpdatedAt,
+    IReadOnlyDictionary<Guid, CatalogRef> CatalogEntries)
 {
-    public static MenteeProfileView From(UserProfile personal, MenteeProfile mentee, Uri? photoUrl) =>
+    public static MenteeProfileView From(
+        UserProfile personal, MenteeProfile mentee, Uri? photoUrl, IReadOnlyDictionary<Guid, CatalogRef> catalogEntries) =>
         new(
             mentee.UserId,
             PersonalView.From(personal, photoUrl),
@@ -74,7 +77,8 @@ public sealed record MenteeProfileView(
                 .Select(goal => new MenteeGoalChoice(goal.Id, goal.Text, goal.DeadlineId,
                     goal.Directions.Select(direction => direction.DirectionId).Order().ToArray()))
                 .ToArray(),
-            personal.UpdatedAt);
+            personal.UpdatedAt,
+            catalogEntries);
 }
 
 public abstract record SaveMenteeProfileResult

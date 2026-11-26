@@ -36,29 +36,29 @@ internal sealed class CatalogReader(AppDbContext db) : ICatalogReader, ICatalogL
             .ToListAsync(cancellationToken);
     }
 
-    public async Task<IReadOnlyDictionary<Guid, string>> FindKindsAsync(
+    public async Task<IReadOnlyDictionary<Guid, CatalogRef>> FindAsync(
         IReadOnlyCollection<Guid> ids,
         CancellationToken cancellationToken)
     {
-        var skills = await db.Skills.AsNoTracking()
+        if (ids.Count == 0)
+        {
+            return new Dictionary<Guid, CatalogRef>();
+        }
+
+        var skills = db.Skills.AsNoTracking()
             .Where(skill => ids.Contains(skill.Id))
-            .Select(skill => skill.Id)
-            .ToListAsync(cancellationToken);
+            .Select(skill => new { skill.Id, Kind = CatalogKinds.Skills, skill.Name });
 
-        var cities = await db.Cities.AsNoTracking()
+        var cities = db.Cities.AsNoTracking()
             .Where(city => ids.Contains(city.Id))
-            .Select(city => city.Id)
-            .ToListAsync(cancellationToken);
+            .Select(city => new { city.Id, Kind = CatalogKinds.Cities, city.Name });
 
-        var items = await db.CatalogItems.AsNoTracking()
+        var items = db.CatalogItems.AsNoTracking()
             .Where(item => ids.Contains(item.Id))
-            .Select(item => new { item.Id, item.Kind })
-            .ToListAsync(cancellationToken);
+            .Select(item => new { item.Id, item.Kind, item.Name });
 
-        return skills.Select(id => KeyValuePair.Create(id, CatalogKinds.Skills))
-            .Concat(cities.Select(id => KeyValuePair.Create(id, CatalogKinds.Cities)))
-            .Concat(items.Select(item => KeyValuePair.Create(item.Id, item.Kind)))
-            .ToDictionary();
+        return await skills.Concat(cities).Concat(items)
+            .ToDictionaryAsync(row => row.Id, row => new CatalogRef(row.Id, row.Kind, row.Name), cancellationToken);
     }
 
     private IQueryable<Row> Rows(string kind) => kind switch
