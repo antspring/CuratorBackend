@@ -18,6 +18,52 @@ public sealed class MenteeProfileService(
         return snapshot is null ? null : ToView(snapshot);
     }
 
+    public async Task<MenteeProfileView?> UpdatePersonalAsync(SaveMenteePersonalCommand command, CancellationToken cancellationToken)
+    {
+        await validator.EnsureCatalogReferencesAsync(
+            [new(nameof(command.CityId), CatalogKinds.Cities, [command.CityId])], cancellationToken);
+        var photo = await validator.FindPhotoAsync(command.UserId, command.PhotoFileId, nameof(command.PhotoFileId), cancellationToken);
+        var updated = await store.UpdatePersonalAsync(command, photo, timeProvider.GetUtcNow(), cancellationToken);
+        return updated ? await FindAsync(command.UserId, cancellationToken) : null;
+    }
+
+    public async Task<bool> ReplaceOwnedSkillsAsync(
+        Guid userId, IReadOnlyList<MenteeOwnedSkillChoice> choices, CancellationToken cancellationToken)
+    {
+        await validator.EnsureCatalogReferencesAsync(
+        [
+            new(nameof(MenteeProfile.OwnedSkills), CatalogKinds.Skills, choices.Select(choice => choice.SkillId).ToArray()),
+            new(nameof(MenteeProfile.OwnedSkills), CatalogKinds.SkillLevels, choices.Select(choice => choice.SkillLevelId).ToArray()),
+        ], cancellationToken);
+
+        return await store.ReplaceOwnedSkillsAsync(userId, choices, timeProvider.GetUtcNow(), cancellationToken);
+    }
+
+    public async Task<bool> ReplaceGoalsAsync(
+        Guid userId, IReadOnlyList<MenteeGoalChoice> choices, CancellationToken cancellationToken)
+    {
+        var references = choices.SelectMany((choice, index) => new CatalogReference[]
+        {
+            new($"Goals[{index}].{nameof(choice.DeadlineId)}", CatalogKinds.GoalDeadlines, [choice.DeadlineId]),
+            new($"Goals[{index}].{nameof(choice.DirectionIds)}", CatalogKinds.MentoringDirections, choice.DirectionIds),
+        }).ToArray();
+        await validator.EnsureCatalogReferencesAsync(references, cancellationToken);
+
+        return await store.ReplaceGoalsAsync(userId, choices, timeProvider.GetUtcNow(), cancellationToken);
+    }
+
+    public async Task<bool> UpdateAvailabilityAsync(
+        Guid userId, MenteeAvailability availability, CancellationToken cancellationToken)
+    {
+        if (availability.MeetingCityId is { } cityId)
+        {
+            await validator.EnsureCatalogReferencesAsync(
+                [new(nameof(availability.MeetingCityId), CatalogKinds.Cities, [cityId])], cancellationToken);
+        }
+
+        return await store.UpdateAvailabilityAsync(userId, availability, timeProvider.GetUtcNow(), cancellationToken);
+    }
+
     public async Task<SaveMenteeProfileResult> SaveAsync(SaveMenteeProfileCommand command, CancellationToken cancellationToken)
     {
         var answers = new MenteeAnswers(

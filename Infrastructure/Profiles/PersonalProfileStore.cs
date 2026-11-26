@@ -25,6 +25,14 @@ internal sealed class PersonalProfileStore(AppDbContext db)
         return new PersonalSnapshot(profile, photoStorageKey);
     }
 
+    public async Task<bool> LockUserAsync(Guid userId, CancellationToken cancellationToken)
+    {
+        var locked = await db.Database
+            .SqlQuery<Guid>($"SELECT id AS \"Value\" FROM users WHERE id = {userId} FOR UPDATE")
+            .ToListAsync(cancellationToken);
+        return locked.Count > 0;
+    }
+
     public async Task<SaveProfileOutcome?> StageAsync(
         Guid userId,
         string ownRole,
@@ -33,11 +41,7 @@ internal sealed class PersonalProfileStore(AppDbContext db)
         DateTimeOffset now,
         CancellationToken cancellationToken)
     {
-        var locked = await db.Database
-            .SqlQuery<Guid>($"SELECT id AS \"Value\" FROM users WHERE id = {userId} FOR UPDATE")
-            .ToListAsync(cancellationToken);
-
-        if (locked.Count == 0)
+        if (!await LockUserAsync(userId, cancellationToken))
         {
             return SaveProfileOutcome.AccountNotFound;
         }
