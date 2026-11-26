@@ -1,3 +1,4 @@
+using Application.Catalogs;
 using Application.Files;
 using Application.Profiles;
 using Domain.Catalogs;
@@ -8,6 +9,7 @@ namespace Application.Mentees;
 public sealed class MenteeProfileService(
     IMenteeProfileStore store,
     ProfileInputValidator validator,
+    ICatalogLookup catalogs,
     IFileStorage storage,
     TimeProvider timeProvider)
 {
@@ -15,7 +17,32 @@ public sealed class MenteeProfileService(
     {
         var snapshot = await store.FindAsync(userId, cancellationToken);
 
-        return snapshot is null ? null : ToView(snapshot);
+        if (snapshot is null)
+        {
+            return null;
+        }
+
+        var mentee = snapshot.Mentee;
+        Guid[] ids =
+        [
+            snapshot.Personal.CityId,
+            snapshot.Personal.LanguageId,
+            mentee.SkillLevelId,
+            mentee.FormatId,
+            mentee.AvailabilityId,
+            mentee.GoalDeadlineId,
+            .. mentee.Skills.Select(skill => skill.SkillId),
+            .. mentee.Tasks.Select(task => task.TaskId),
+            .. mentee.OwnedSkills.Select(skill => skill.SkillId),
+            .. mentee.OwnedSkills.Select(skill => skill.SkillLevelId),
+            .. mentee.Goals.Select(goal => goal.DeadlineId),
+            .. mentee.Goals.SelectMany(goal => goal.Directions.Select(direction => direction.DirectionId)),
+            .. (mentee.Availability?.MeetingCityId is { } cityId ? new[] { cityId } : Array.Empty<Guid>()),
+        ];
+
+        var entries = await catalogs.FindAsync(ids.Distinct().ToArray(), cancellationToken);
+        var photoUrl = snapshot.PhotoStorageKey is { } photoKey ? storage.GetPublicUrl(photoKey) : null;
+        return MenteeProfileView.From(snapshot.Personal, mentee, photoUrl, entries);
     }
 
     public async Task<MenteeProfileView?> UpdatePersonalAsync(SaveMenteePersonalCommand command, CancellationToken cancellationToken)
@@ -104,10 +131,4 @@ public sealed class MenteeProfileService(
             _ => throw new InvalidOperationException($"Неизвестный результат сохранения анкеты: {outcome}"),
         };
     }
-
-    private MenteeProfileView ToView(MenteeProfileSnapshot snapshot) =>
-        MenteeProfileView.From(
-            snapshot.Personal,
-            snapshot.Mentee,
-            snapshot.PhotoStorageKey is null ? null : storage.GetPublicUrl(snapshot.PhotoStorageKey));
 }

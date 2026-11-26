@@ -1,3 +1,5 @@
+using Application.Catalogs;
+
 namespace API.Common;
 
 public sealed record PageResponse<T>(IReadOnlyList<T> Items, string? NextCursor);
@@ -9,4 +11,7 @@ public static class PageResponse
     public const int DefaultLimit = 20;
 }
 
-public sealed record LookupResponse(Guid Id, string Name);
+public sealed record LookupResponse(Guid Id, string Name)
+{
+    public static LookupResponse From(CatalogRef entry) => new(entry.Id, entry.Name);
+}
