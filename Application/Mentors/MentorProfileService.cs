@@ -18,6 +18,13 @@ public sealed class MentorProfileService(
         return snapshot is null ? null : ToView(snapshot);
     }
 
+    public async Task<IReadOnlyList<MentorWorkplaceView>?> ReplaceWorkplacesAsync(
+        Guid userId, IReadOnlyList<MentorWorkplaceInput> workplaces, CancellationToken cancellationToken)
+    {
+        var saved = await store.ReplaceWorkplacesAsync(userId, workplaces, timeProvider.GetUtcNow(), cancellationToken);
+        return saved is null ? null : MentorWorkplaceView.From(saved);
+    }
+
     public async Task<SaveMentorProfileResult> SaveAsync(SaveMentorProfileCommand command, CancellationToken cancellationToken)
     {
         var answers = new MentorAnswers(

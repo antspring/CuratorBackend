@@ -16,6 +16,7 @@ internal sealed class MentorProfileStore(AppDbContext db, PersonalProfileStore p
         var mentor = await db.MentorProfiles.AsNoTracking()
             .Include(profile => profile.Skills)
             .Include(profile => profile.Directions)
+            .Include(profile => profile.Workplaces)
             .AsSplitQuery()
             .SingleOrDefaultAsync(profile => profile.UserId == userId, cancellationToken);
 
@@ -27,6 +28,37 @@ internal sealed class MentorProfileStore(AppDbContext db, PersonalProfileStore p
         var personal = await personalProfiles.LoadAsync(userId, cancellationToken);
 
         return new MentorProfileSnapshot(personal.Profile, mentor, personal.PhotoStorageKey);
+    }
+
+    public async Task<IReadOnlyList<MentorWorkplace>?> ReplaceWorkplacesAsync(
+        Guid userId, IReadOnlyList<MentorWorkplaceInput> workplaces, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        await using var transaction = Transaction.Current is null
+            ? await db.Database.BeginTransactionAsync(cancellationToken)
+            : null;
+        if (!await personalProfiles.LockUserAsync(userId, cancellationToken))
+        {
+            return null;
+        }
+
+        var mentor = await db.MentorProfiles.Include(profile => profile.Workplaces)
+            .SingleOrDefaultAsync(profile => profile.UserId == userId, cancellationToken);
+        if (mentor is null)
+        {
+            return null;
+        }
+
+        mentor.ReplaceWorkplaces(workplaces, now.Year);
+        var personal = await db.UserProfiles.SingleAsync(profile => profile.UserId == userId, cancellationToken);
+        personal.MarkUpdated(now);
+        await db.SaveChangesAsync(cancellationToken);
+
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
+
+        return mentor.Workplaces.ToArray();
     }
 
     public async Task<SaveProfileOutcome> SaveAsync(

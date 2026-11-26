@@ -487,6 +487,50 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("mentor_skills", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Mentors.MentorWorkplace", b =>
+                {
+                    b.Property<Guid>("MentorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mentor_id");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Company")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("company");
+
+                    b.Property<int?>("EndYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("end_year");
+
+                    b.Property<bool>("IsCurrent")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_current");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<int>("StartYear")
+                        .HasColumnType("integer")
+                        .HasColumnName("start_year");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.HasKey("MentorId", "Id")
+                        .HasName("pk_mentor_workplaces");
+
+                    b.ToTable("mentor_workplaces", (string)null);
+                });
+
             modelBuilder.Entity("Domain.Users.UserProfile", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -1202,6 +1246,16 @@ namespace Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_mentor_skills_catalog_items_skill_level_id");
                 });
 
+            modelBuilder.Entity("Domain.Mentors.MentorWorkplace", b =>
+                {
+                    b.HasOne("Domain.Mentors.MentorProfile", null)
+                        .WithMany("Workplaces")
+                        .HasForeignKey("MentorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentor_workplaces_mentor_profiles_mentor_id");
+                });
+
             modelBuilder.Entity("Domain.Users.UserProfile", b =>
                 {
                     b.HasOne("Domain.Catalogs.City", null)
@@ -1320,6 +1374,8 @@ namespace Infrastructure.Persistence.Migrations
                     b.Navigation("Directions");
 
                     b.Navigation("Skills");
+
+                    b.Navigation("Workplaces");
                 });
 #pragma warning restore 612, 618
         }

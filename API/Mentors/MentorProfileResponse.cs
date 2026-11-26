@@ -5,6 +5,8 @@ namespace API.Mentors;
 
 public sealed record MentorSkillResponse(Guid SkillId, Guid SkillLevelId);
 
+public sealed record MentorWorkExperienceResponse(IReadOnlyList<MentorWorkplaceView> Workplaces);
+
 public sealed record MentorProfileResponse(
     Guid UserId,
     PersonalInfoResponse Personal,
@@ -17,6 +19,7 @@ public sealed record MentorProfileResponse(
     Guid PricingModelId,
     string Price,
     bool HasFreeTrial,
+    IReadOnlyList<MentorWorkplaceView> Workplaces,
     DateTimeOffset UpdatedAt)
 {
     public static MentorProfileResponse From(MentorProfileView profile) =>
@@ -32,5 +35,6 @@ public sealed record MentorProfileResponse(
             profile.PricingModelId,
             Money.Format(profile.Price)!,
             profile.HasFreeTrial,
+            profile.Workplaces,
             profile.UpdatedAt);
 }

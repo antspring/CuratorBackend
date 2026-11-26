@@ -22,6 +22,20 @@ public sealed class MentorProfileController(MentorProfileService mentorProfileSe
             : Ok(MentorProfileResponse.From(profile));
     }
 
+    [HttpPut("work-experience")]
+    [ProducesResponseType<MentorWorkExperienceResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<MentorWorkExperienceResponse>> PutWorkExperience(
+        MentorWorkExperienceRequest request, CancellationToken cancellationToken)
+    {
+        var saved = await mentorProfileService.ReplaceWorkplacesAsync(User.GetUserId(), request.ToChoices(), cancellationToken);
+        return saved is null
+            ? this.ProblemWithCode(StatusCodes.Status404NotFound, ErrorCodes.ResourceNotFound, "Анкета ментора ещё не сохранена.")
+            : Ok(new MentorWorkExperienceResponse(saved));
+    }
+
     [HttpPut]
     [ProducesResponseType<MentorProfileResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]

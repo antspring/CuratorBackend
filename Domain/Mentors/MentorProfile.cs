@@ -4,6 +4,9 @@ namespace Domain.Mentors;
 
 public sealed class MentorProfile
 {
+    public const int MaxWorkplaces = 20;
+
+    private readonly List<MentorWorkplace> workplaces = [];
     private readonly List<MentorSkill> skills = [];
     private readonly List<MentorDirection> directions = [];
 
@@ -36,6 +39,50 @@ public sealed class MentorProfile
     public IReadOnlyCollection<MentorSkill> Skills => skills;
 
     public IReadOnlyCollection<MentorDirection> Directions => directions;
+
+    public IReadOnlyCollection<MentorWorkplace> Workplaces => workplaces;
+
+    public void ReplaceWorkplaces(IReadOnlyList<MentorWorkplaceInput> choices, int currentYear)
+    {
+        if (choices.Count > MaxWorkplaces)
+        {
+            throw new DomainException(nameof(Workplaces), $"Можно указать до {MaxWorkplaces} мест работы.");
+        }
+
+        var ids = Require.Ids(choices.Where(choice => choice.Id.HasValue).Select(choice => choice.Id!.Value),
+            0, MaxWorkplaces, nameof(Workplaces)).ToHashSet();
+        var existing = workplaces.ToDictionary(workplace => workplace.Id);
+        var validated = choices.Select((choice, index) =>
+        {
+            var field = $"Workplaces[{index}]";
+            if (choice.Id is { } id && !existing.ContainsKey(id))
+            {
+                throw new DomainException($"{field}.Id", "Место работы не найдено в вашем профиле.");
+            }
+
+            return MentorWorkplace.Validate(choice, currentYear, field);
+        }).ToArray();
+
+        var unmatched = workplaces.Where(workplace => !ids.Contains(workplace.Id))
+            .OrderBy(workplace => workplace.SortOrder)
+            .ToList();
+
+        for (var index = 0; index < validated.Length; index++)
+        {
+            var choice = validated[index];
+            var workplace = choice.Id is { } id ? existing[id] : unmatched.Find(candidate => candidate.Matches(choice));
+            if (workplace is null)
+            {
+                workplaces.Add(new MentorWorkplace(UserId, choice, index));
+                continue;
+            }
+
+            workplace.Update(choice, index);
+            unmatched.Remove(workplace);
+        }
+
+        workplaces.RemoveAll(unmatched.Contains);
+    }
 
     public void Update(MentorAnswers answers)
     {
