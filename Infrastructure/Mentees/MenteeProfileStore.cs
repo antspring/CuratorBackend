@@ -58,6 +58,14 @@ internal sealed class MenteeProfileStore(AppDbContext db, PersonalProfileStore p
                 personal.MarkUpdated(now);
             }, cancellationToken);
 
+    public Task<bool> UpdateAvailabilityAsync(
+        Guid userId, MenteeAvailability availability, DateTimeOffset now, CancellationToken cancellationToken) =>
+        UpdateSectionAsync(userId, db.MenteeProfiles, (mentee, personal) =>
+        {
+            mentee.UpdateAvailability(availability);
+            personal.MarkUpdated(now);
+        }, cancellationToken);
+
     private async Task<bool> UpdateSectionAsync(
         Guid userId,
         IQueryable<MenteeProfile> profiles,

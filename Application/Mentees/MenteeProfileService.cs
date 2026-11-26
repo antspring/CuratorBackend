@@ -52,6 +52,18 @@ public sealed class MenteeProfileService(
         return await store.ReplaceGoalsAsync(userId, choices, timeProvider.GetUtcNow(), cancellationToken);
     }
 
+    public async Task<bool> UpdateAvailabilityAsync(
+        Guid userId, MenteeAvailability availability, CancellationToken cancellationToken)
+    {
+        if (availability.MeetingCityId is { } cityId)
+        {
+            await validator.EnsureCatalogReferencesAsync(
+                [new(nameof(availability.MeetingCityId), CatalogKinds.Cities, [cityId])], cancellationToken);
+        }
+
+        return await store.UpdateAvailabilityAsync(userId, availability, timeProvider.GetUtcNow(), cancellationToken);
+    }
+
     public async Task<SaveMenteeProfileResult> SaveAsync(SaveMenteeProfileCommand command, CancellationToken cancellationToken)
     {
         var answers = new MenteeAnswers(

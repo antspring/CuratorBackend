@@ -41,6 +41,8 @@ public sealed class MenteeProfile
 
     public Guid AvailabilityId { get; private set; }
 
+    public MenteeAvailability? Availability { get; private set; }
+
     public decimal? BudgetFrom { get; private set; }
 
     public decimal? BudgetTo { get; private set; }
@@ -86,6 +88,8 @@ public sealed class MenteeProfile
             skill.SkillLevelId = byId[skill.SkillId].SkillLevelId;
         }
     }
+
+    public void UpdateAvailability(MenteeAvailability availability) => Availability = availability;
 
     public void UpdatePersonalDetails(string status, string university, string? specialty, string? aboutMe)
     {

@@ -474,6 +474,96 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync(goalsPath, body)).StatusCode);
     }
 
+    [Fact]
+    public async Task PutAvailability_SavesAndReplacesScheduleIndependentlyOfQuestionnaire()
+    {
+        var (client, _) = await factory.SignedInClientAsync();
+        var input = await ValidProfileAsync();
+        var questionnaire = await client.PutAsJsonAsync(Path, input);
+        questionnaire.EnsureSuccessStatusCode();
+        var starting = await questionnaire.ReadAsync<JsonElement>();
+        Assert.Equal(JsonValueKind.Null, starting.GetProperty("availability").ValueKind);
+
+        var catalogs = await factory.CatalogsAsync();
+        var city = catalogs[CatalogKinds.Cities].First(id => id != input.Personal.CityId);
+        var both = ValidSchedule() with { Formats = ["offline", "online"], MeetingCityId = city };
+        var path = $"{Path}/availability";
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync(path, both)).StatusCode);
+
+        var profile = await client.GetFromJsonAsync<JsonElement>(Path);
+        var schedule = profile.GetProperty("availability").Deserialize<ScheduleInput>(JsonSerializerOptions.Web)!;
+        Assert.Equal(new[] { "monday", "friday" }, schedule.Days);
+        Assert.Equal(new[] { "online", "offline" }, schedule.Formats);
+        Assert.Equal(city, schedule.MeetingCityId);
+        Assert.Equal("Asia/Yekaterinburg", schedule.TimeZoneId);
+        Assert.Equal(("18:00", "21:00"), (schedule.StartTime, schedule.EndTime));
+        Assert.Equal(input.Personal.CityId, profile.GetProperty("personal").GetProperty("cityId").GetGuid());
+        Assert.Equal(input.AvailabilityId, profile.GetProperty("availabilityId").GetGuid());
+        Assert.Equal(input.FormatId, profile.GetProperty("formatId").GetGuid());
+        Assert.Single(profile.GetProperty("goals").EnumerateArray());
+
+        var updated = ValidSchedule() with { Days = ["tuesday"], TimeZoneId = "UTC", StartTime = "09:30", EndTime = "12:00" };
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync(path, updated)).StatusCode);
+
+        var newHours = catalogs[CatalogKinds.Availability].First(id => id != input.AvailabilityId);
+        var repeated = await client.PutAsJsonAsync(Path, input with { AvailabilityId = newHours });
+        repeated.EnsureSuccessStatusCode();
+        var persisted = await repeated.ReadAsync<JsonElement>();
+        var replaced = persisted.GetProperty("availability").Deserialize<ScheduleInput>(JsonSerializerOptions.Web)!;
+        Assert.Equal(newHours, persisted.GetProperty("availabilityId").GetGuid());
+        Assert.Equal(updated.Days, replaced.Days);
+        Assert.Equal(updated.Formats, replaced.Formats);
+        Assert.Null(replaced.MeetingCityId);
+        Assert.Equal((updated.StartTime, updated.EndTime, updated.TimeZoneId), (replaced.StartTime, replaced.EndTime, replaced.TimeZoneId));
+    }
+
+    [Fact]
+    public async Task PutAvailability_ValidatesScheduleAndMeetingCity()
+    {
+        var (client, _) = await factory.SignedInClientAsync();
+        var input = await ValidProfileAsync();
+        (await client.PutAsJsonAsync(Path, input)).EnsureSuccessStatusCode();
+        var valid = ValidSchedule();
+
+        (ScheduleInput Input, string Field)[] invalid =
+        [
+            (valid with { Days = ["monday", "monday"] }, "days"),
+            (valid with { Formats = ["online", "online"] }, "formats"),
+            (valid with { Formats = ["hybrid"] }, "formats[0]"),
+            (valid with { TimeZoneId = "Asia/Unknown" }, "timeZoneId"),
+            (valid with { EndTime = "08:00" }, "endTime"),
+            (valid with { StartTime = "25:00" }, "startTime"),
+            (valid with { Formats = ["offline"] }, "meetingCityId"),
+            (valid with { Formats = ["offline"], MeetingCityId = input.FormatId }, "meetingCityId"),
+            (valid with { MeetingCityId = input.Personal.CityId }, "meetingCityId"),
+        ];
+
+        foreach (var (body, field) in invalid)
+        {
+            var response = await client.PutAsJsonAsync($"{Path}/availability", body);
+            await ProfileTestData.AssertFieldErrorAsync(response, field);
+        }
+
+        var profile = await client.GetFromJsonAsync<JsonElement>(Path);
+        Assert.Equal(JsonValueKind.Null, profile.GetProperty("availability").ValueKind);
+    }
+
+    [Fact]
+    public async Task PutAvailability_RequiresAuthenticationAndAnExistingMenteeProfile()
+    {
+        var path = $"{Path}/availability";
+        var body = ValidSchedule();
+        Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateClient().PutAsJsonAsync(path, body)).StatusCode);
+        var (client, _) = await factory.SignedInClientAsync();
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync(path, body)).StatusCode);
+    }
+
+    private sealed record ScheduleInput(string[] Days, string StartTime, string EndTime,
+        string TimeZoneId, string[] Formats, Guid? MeetingCityId);
+
+    private static ScheduleInput ValidSchedule() =>
+        new(["friday", "monday"], "18:00", "21:00", "Asia/Yekaterinburg", ["online"], null);
+
     private sealed record PersonalDetailsInput(string FirstName, string LastName, int Age, Guid CityId, Guid? PhotoFileId,
         string Status, string University, string? Specialty, string? AboutMe);
 

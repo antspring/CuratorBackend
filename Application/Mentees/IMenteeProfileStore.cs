@@ -18,6 +18,9 @@ public interface IMenteeProfileStore
     Task<bool> ReplaceGoalsAsync(
         Guid userId, IReadOnlyList<MenteeGoalChoice> choices, DateTimeOffset now, CancellationToken cancellationToken);
 
+    Task<bool> UpdateAvailabilityAsync(
+        Guid userId, MenteeAvailability availability, DateTimeOffset now, CancellationToken cancellationToken);
+
     Task<SaveProfileOutcome> SaveAsync(
         Guid userId,
         PersonalData personal,

@@ -61,6 +61,19 @@ public sealed class MenteeProfileController(MenteeProfileService menteeProfileSe
             : this.ProblemWithCode(StatusCodes.Status404NotFound, ErrorCodes.ResourceNotFound, "Анкета менти ещё не сохранена.");
     }
 
+    [HttpPut("availability")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> PutAvailability(MenteeAvailabilityRequest request, CancellationToken cancellationToken)
+    {
+        var updated = await menteeProfileService.UpdateAvailabilityAsync(User.GetUserId(), request.ToAvailability(), cancellationToken);
+        return updated
+            ? NoContent()
+            : this.ProblemWithCode(StatusCodes.Status404NotFound, ErrorCodes.ResourceNotFound, "Анкета менти ещё не сохранена.");
+    }
+
     [HttpPut]
     [ProducesResponseType<MenteeProfileResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]

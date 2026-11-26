@@ -1025,6 +1025,61 @@ namespace Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_mentee_profiles_users_user_id");
+
+                    b.OwnsOne("Domain.Mentees.MenteeAvailability", "Availability", b1 =>
+                        {
+                            b1.Property<Guid>("MenteeId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("mentee_id");
+
+                            b1.PrimitiveCollection<int[]>("Days")
+                                .IsRequired()
+                                .HasColumnType("integer[]")
+                                .HasColumnName("days");
+
+                            b1.Property<TimeOnly>("EndTime")
+                                .HasColumnType("time without time zone")
+                                .HasColumnName("end_time");
+
+                            b1.PrimitiveCollection<int[]>("Formats")
+                                .IsRequired()
+                                .HasColumnType("integer[]")
+                                .HasColumnName("formats");
+
+                            b1.Property<Guid?>("MeetingCityId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("meeting_city_id");
+
+                            b1.Property<TimeOnly>("StartTime")
+                                .HasColumnType("time without time zone")
+                                .HasColumnName("start_time");
+
+                            b1.Property<string>("TimeZoneId")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("time_zone_id");
+
+                            b1.HasKey("MenteeId")
+                                .HasName("pk_mentee_availability");
+
+                            b1.HasIndex("MeetingCityId")
+                                .HasDatabaseName("ix_mentee_availability_meeting_city_id");
+
+                            b1.ToTable("mentee_availability", (string)null);
+
+                            b1.HasOne("Domain.Catalogs.City", null)
+                                .WithMany()
+                                .HasForeignKey("MeetingCityId")
+                                .OnDelete(DeleteBehavior.Restrict)
+                                .HasConstraintName("fk_mentee_availability_cities_meeting_city_id");
+
+                            b1.WithOwner()
+                                .HasForeignKey("MenteeId")
+                                .HasConstraintName("fk_mentee_availability_mentee_profiles_mentee_id");
+                        });
+
+                    b.Navigation("Availability");
                 });
 
             modelBuilder.Entity("Domain.Mentees.MenteeSkill", b =>
