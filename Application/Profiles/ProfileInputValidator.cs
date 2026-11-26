@@ -21,13 +21,7 @@ public sealed class ProfileInputValidator(ICatalogLookup catalogs, IFileMetadata
 
     public async Task<PersonalData> BuildPersonalAsync(Guid userId, PersonalInput input, CancellationToken cancellationToken)
     {
-        StoredFile? photo = null;
-
-        if (input.PhotoFileId is { } photoFileId)
-        {
-            photo = await files.FindOwnedAsync(photoFileId, userId, cancellationToken)
-                ?? throw new DomainException($"{PersonalField}.{nameof(PersonalInput.PhotoFileId)}", "Файл не найден.");
-        }
+        var photo = await FindPhotoAsync(userId, input.PhotoFileId, $"{PersonalField}.{nameof(input.PhotoFileId)}", cancellationToken);
 
         try
         {
@@ -39,14 +33,25 @@ public sealed class ProfileInputValidator(ICatalogLookup catalogs, IFileMetadata
         }
     }
 
+    public async Task<StoredFile?> FindPhotoAsync(Guid userId, Guid? photoFileId, string field, CancellationToken cancellationToken)
+    {
+        if (photoFileId is null)
+        {
+            return null;
+        }
+
+        return await files.FindOwnedAsync(photoFileId.Value, userId, cancellationToken)
+            ?? throw new DomainException(field, "Файл не найден.");
+    }
+
     public async Task EnsureCatalogReferencesAsync(IReadOnlyCollection<CatalogReference> references, CancellationToken cancellationToken)
     {
         var ids = references.SelectMany(reference => reference.Ids).Distinct().ToList();
-        var found = await catalogs.FindAsync(ids, cancellationToken);
+        var entries = await catalogs.FindAsync(ids, cancellationToken);
 
         foreach (var reference in references)
         {
-            if (reference.Ids.Any(id => found.GetValueOrDefault(id)?.Kind != reference.Kind))
+            if (reference.Ids.Any(id => entries.GetValueOrDefault(id)?.Kind != reference.Kind))
             {
                 throw new DomainException(reference.Field, "Значение не найдено в справочнике.");
             }

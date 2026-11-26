@@ -6,6 +6,8 @@ namespace IntegrationTests.Infrastructure;
 
 public sealed record AccountDto(Guid Id, string Email, string[] Roles);
 
+public sealed record TicketDto(Guid VerificationId, DateTimeOffset ExpiresAt, DateTimeOffset ResendAvailableAt);
+
 public sealed record TokenPairDto(
     string AccessToken,
     DateTimeOffset AccessTokenExpiresAt,
@@ -48,10 +50,25 @@ public static class ApiClient
         return client.SendAsync(request);
     }
 
-    public static async Task<TokenPairDto> RegisterAndLoginAsync(this HttpClient client)
+    public static Task<HttpResponseMessage> ConfirmAsync(this HttpClient client, Guid id, string code) =>
+        client.PostAsJsonAsync($"/api/v1/accounts/{id}/confirm", new { code });
+
+    public static Task<HttpResponseMessage> ResendAsync(this HttpClient client, Guid id) =>
+        client.PostAsync($"/api/v1/accounts/{id}/resend", null);
+
+    public static async Task<HttpResponseMessage> RegisterConfirmedAsync(this HttpClient client, ApiFactory factory, string email)
+    {
+        using var started = await client.RegisterAsync(email);
+        started.EnsureSuccessStatusCode();
+        var ticket = await started.ReadAsync<TicketDto>();
+        var code = await factory.ReadCodeAsync(email);
+        return await client.ConfirmAsync(ticket.VerificationId, code);
+    }
+
+    public static async Task<TokenPairDto> RegisterAndLoginAsync(this HttpClient client, ApiFactory factory)
     {
         var email = NewEmail();
-        (await client.RegisterAsync(email)).EnsureSuccessStatusCode();
+        (await client.RegisterConfirmedAsync(factory, email)).EnsureSuccessStatusCode();
 
         var login = await client.LoginAsync(email);
         login.EnsureSuccessStatusCode();

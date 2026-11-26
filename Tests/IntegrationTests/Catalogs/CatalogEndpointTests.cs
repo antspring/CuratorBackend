@@ -14,7 +14,7 @@ public class CatalogEndpointTests(ApiFactory factory) : IClassFixture<ApiFactory
 
     public async Task InitializeAsync()
     {
-        var tokens = await client.RegisterAndLoginAsync();
+        var tokens = await client.RegisterAndLoginAsync(factory);
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", tokens.AccessToken);
     }
 

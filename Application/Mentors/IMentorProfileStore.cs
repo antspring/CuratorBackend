@@ -8,6 +8,9 @@ public interface IMentorProfileStore
 {
     Task<MentorProfileSnapshot?> FindAsync(Guid userId, CancellationToken cancellationToken);
 
+    Task<IReadOnlyList<MentorWorkplace>?> ReplaceWorkplacesAsync(
+        Guid userId, IReadOnlyList<MentorWorkplaceInput> workplaces, DateTimeOffset now, CancellationToken cancellationToken);
+
     Task<SaveProfileOutcome> SaveAsync(
         Guid userId,
         PersonalData personal,

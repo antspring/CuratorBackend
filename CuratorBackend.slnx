@@ -1,7 +1,8 @@
 <Solution>
   <Folder Name="/Solution Items/">
     <File Path=".env.example" />
-    <File Path="compose.yaml" />
+    <File Path="compose.dev.yaml" />
+    <File Path="compose.prod.yaml" />
     <File Path="Directory.Build.props" />
     <File Path="dotnet-tools.json" />
     <File Path="global.json" />

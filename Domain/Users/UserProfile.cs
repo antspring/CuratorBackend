@@ -48,6 +48,8 @@ public sealed class UserProfile
         CityId = personal.CityId;
         LanguageId = personal.LanguageId;
         PhotoFileId = personal.PhotoFileId;
-        UpdatedAt = now.ToUniversalTime();
+        MarkUpdated(now);
     }
+
+    public void MarkUpdated(DateTimeOffset now) => UpdatedAt = now.ToUniversalTime();
 }

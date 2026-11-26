@@ -17,6 +17,16 @@ public sealed record SaveMentorProfileCommand(
     decimal Price,
     bool HasFreeTrial);
 
+public sealed record MentorWorkplaceView(
+    Guid Id, string Company, string Title, int StartYear, int? EndYear, bool IsCurrent)
+{
+    public static IReadOnlyList<MentorWorkplaceView> From(IEnumerable<MentorWorkplace> workplaces) =>
+        workplaces.OrderBy(workplace => workplace.SortOrder)
+            .Select(workplace => new MentorWorkplaceView(
+                workplace.Id, workplace.Company, workplace.Title, workplace.StartYear, workplace.EndYear, workplace.IsCurrent))
+            .ToArray();
+}
+
 public sealed record MentorProfileView(
     Guid UserId,
     PersonalView Personal,
@@ -29,6 +39,7 @@ public sealed record MentorProfileView(
     Guid PricingModelId,
     decimal Price,
     bool HasFreeTrial,
+    IReadOnlyList<MentorWorkplaceView> Workplaces,
     DateTimeOffset UpdatedAt)
 {
     public static MentorProfileView From(UserProfile personal, MentorProfile mentor, Uri? photoUrl) =>
@@ -44,6 +55,7 @@ public sealed record MentorProfileView(
             mentor.PricingModelId,
             mentor.Price,
             mentor.HasFreeTrial,
+            MentorWorkplaceView.From(mentor.Workplaces),
             personal.UpdatedAt);
 }
 

@@ -3,18 +3,7 @@
     build:
       context: .
       dockerfile: API/Dockerfile
-    environment:
-      ASPNETCORE_ENVIRONMENT: ${ASPNETCORE_ENVIRONMENT:-Development}
-      ConnectionStrings__Database: >-
-        Host=postgres;Port=5432;Database=${POSTGRES_DB:?};Username=${POSTGRES_USER:?};Password=${POSTGRES_PASSWORD:?};GSS Encryption Mode=Disable
-      Jwt__SigningKey: ${JWT_SIGNING_KEY:?}
-      FileStorage__ServiceUrl: http://storage:9000
-      FileStorage__Region: us-east-1
-      FileStorage__Bucket: ${FILE_STORAGE_BUCKET:?}
-      FileStorage__AccessKey: ${FILE_STORAGE_ACCESS_KEY:?}
-      FileStorage__SecretKey: ${FILE_STORAGE_SECRET_KEY:?}
-      FileStorage__PublicBaseUrl: http://localhost:${FILE_STORAGE_PORT:-9000}/${FILE_STORAGE_BUCKET:?}
-      FileStorage__ForcePathStyle: "true"
+    env_file: .env
     ports:
       - "${API_PORT:-8080}:8080"
     depends_on:
@@ -45,8 +34,8 @@
   storage:
     image: rustfs/rustfs:1.0.5
     environment:
-      RUSTFS_ACCESS_KEY: ${FILE_STORAGE_ACCESS_KEY:?}
-      RUSTFS_SECRET_KEY: ${FILE_STORAGE_SECRET_KEY:?}
+      RUSTFS_ACCESS_KEY: ${FileStorage__AccessKey:?}
+      RUSTFS_SECRET_KEY: ${FileStorage__SecretKey:?}
     ports:
       - "${FILE_STORAGE_PORT:-9000}:9000"
     volumes:
@@ -61,11 +50,11 @@
   storage-init:
     image: amazon/aws-cli:2.40.3
     environment:
-      AWS_ACCESS_KEY_ID: ${FILE_STORAGE_ACCESS_KEY:?}
-      AWS_SECRET_ACCESS_KEY: ${FILE_STORAGE_SECRET_KEY:?}
-      AWS_DEFAULT_REGION: us-east-1
+      AWS_ACCESS_KEY_ID: ${FileStorage__AccessKey:?}
+      AWS_SECRET_ACCESS_KEY: ${FileStorage__SecretKey:?}
+      AWS_DEFAULT_REGION: ${FileStorage__Region:?}
       AWS_ENDPOINT_URL: http://storage:9000
-      BUCKET: ${FILE_STORAGE_BUCKET:?}
+      BUCKET: ${FileStorage__Bucket:?}
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - |
@@ -74,6 +63,12 @@
     depends_on:
       storage:
         condition: service_healthy
+
+  mailpit:
+    image: axllent/mailpit:v1.34.0
+    ports:
+      - "127.0.0.1:${MAILPIT_SMTP_PORT:-1025}:1025"
+      - "127.0.0.1:${MAILPIT_UI_PORT:-8025}:8025"
 
 volumes:
   postgres-data:

@@ -27,6 +27,11 @@ internal sealed class MentorProfileConfiguration : IEntityTypeConfiguration<Ment
         builder.HasOne<CatalogItem>().WithMany().HasForeignKey(profile => profile.AvailabilityId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<CatalogItem>().WithMany().HasForeignKey(profile => profile.PricingModelId).OnDelete(DeleteBehavior.Restrict);
 
+        builder.HasMany(profile => profile.Workplaces)
+            .WithOne()
+            .HasForeignKey(workplace => workplace.MentorId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasMany(profile => profile.Skills)
             .WithOne()
             .HasForeignKey(skill => skill.MentorId)
@@ -59,5 +64,16 @@ internal sealed class MentorDirectionConfiguration : IEntityTypeConfiguration<Me
         builder.HasKey(direction => new { direction.MentorId, direction.DirectionId });
 
         builder.HasOne<CatalogItem>().WithMany().HasForeignKey(direction => direction.DirectionId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class MentorWorkplaceConfiguration : IEntityTypeConfiguration<MentorWorkplace>
+{
+    public void Configure(EntityTypeBuilder<MentorWorkplace> builder)
+    {
+        builder.ToTable("mentor_workplaces");
+        builder.HasKey(workplace => new { workplace.MentorId, workplace.Id });
+        builder.Property(workplace => workplace.Company).HasMaxLength(MentorWorkplace.TextMaxLength);
+        builder.Property(workplace => workplace.Title).HasMaxLength(MentorWorkplace.TextMaxLength);
     }
 }
