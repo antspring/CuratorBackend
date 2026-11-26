@@ -191,6 +191,32 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("files", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Mentees.MenteeOwnedSkill", b =>
+                {
+                    b.Property<Guid>("MenteeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mentee_id");
+
+                    b.Property<Guid>("SkillId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("skill_id");
+
+                    b.Property<Guid>("SkillLevelId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("skill_level_id");
+
+                    b.HasKey("MenteeId", "SkillId")
+                        .HasName("pk_mentee_owned_skills");
+
+                    b.HasIndex("SkillId")
+                        .HasDatabaseName("ix_mentee_owned_skills_skill_id");
+
+                    b.HasIndex("SkillLevelId")
+                        .HasDatabaseName("ix_mentee_owned_skills_skill_level_id");
+
+                    b.ToTable("mentee_owned_skills", (string)null);
+                });
+
             modelBuilder.Entity("Domain.Mentees.MenteeProfile", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -849,6 +875,30 @@ namespace Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_files_users_owner_id");
                 });
 
+            modelBuilder.Entity("Domain.Mentees.MenteeOwnedSkill", b =>
+                {
+                    b.HasOne("Domain.Mentees.MenteeProfile", null)
+                        .WithMany("OwnedSkills")
+                        .HasForeignKey("MenteeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_owned_skills_mentee_profiles_mentee_id");
+
+                    b.HasOne("Domain.Catalogs.Skill", null)
+                        .WithMany()
+                        .HasForeignKey("SkillId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_owned_skills_skills_skill_id");
+
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("SkillLevelId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_owned_skills_catalog_items_skill_level_id");
+                });
+
             modelBuilder.Entity("Domain.Mentees.MenteeProfile", b =>
                 {
                     b.HasOne("Domain.Catalogs.CatalogItem", null)
@@ -1106,6 +1156,8 @@ namespace Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Domain.Mentees.MenteeProfile", b =>
                 {
+                    b.Navigation("OwnedSkills");
+
                     b.Navigation("Skills");
 
                     b.Navigation("Tasks");

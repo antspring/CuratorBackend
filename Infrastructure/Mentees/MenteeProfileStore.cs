@@ -16,6 +16,7 @@ internal sealed class MenteeProfileStore(AppDbContext db, PersonalProfileStore p
     {
         var mentee = await db.MenteeProfiles.AsNoTracking()
             .Include(profile => profile.Skills)
+            .Include(profile => profile.OwnedSkills)
             .Include(profile => profile.Tasks)
             .AsSplitQuery()
             .SingleOrDefaultAsync(profile => profile.UserId == userId, cancellationToken);
@@ -50,6 +51,36 @@ internal sealed class MenteeProfileStore(AppDbContext db, PersonalProfileStore p
         var personal = await db.UserProfiles.SingleAsync(profile => profile.UserId == command.UserId, cancellationToken);
         personal.Update(new PersonalData(command.FirstName, command.LastName, command.Age, command.CityId, personal.LanguageId, photo), now);
         mentee.UpdatePersonalDetails(command.Status, command.University, command.Specialty, command.AboutMe);
+        await db.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
+
+        return true;
+    }
+
+    public async Task<bool> ReplaceOwnedSkillsAsync(
+        Guid userId, IReadOnlyList<MenteeOwnedSkillChoice> choices, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        await using var transaction = Transaction.Current is null
+            ? await db.Database.BeginTransactionAsync(cancellationToken)
+            : null;
+        if (!await personalProfiles.LockUserAsync(userId, cancellationToken))
+        {
+            return false;
+        }
+
+        var mentee = await db.MenteeProfiles.Include(profile => profile.OwnedSkills)
+            .SingleOrDefaultAsync(profile => profile.UserId == userId, cancellationToken);
+        if (mentee is null)
+        {
+            return false;
+        }
+
+        mentee.ReplaceOwnedSkills(choices);
+        var personal = await db.UserProfiles.SingleAsync(profile => profile.UserId == userId, cancellationToken);
+        personal.MarkUpdated(now);
         await db.SaveChangesAsync(cancellationToken);
         if (transaction is not null)
         {

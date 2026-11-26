@@ -12,6 +12,9 @@ public interface IMenteeProfileStore
     Task<bool> UpdatePersonalAsync(
         SaveMenteePersonalCommand command, StoredFile? photo, DateTimeOffset now, CancellationToken cancellationToken);
 
+    Task<bool> ReplaceOwnedSkillsAsync(
+        Guid userId, IReadOnlyList<MenteeOwnedSkillChoice> choices, DateTimeOffset now, CancellationToken cancellationToken);
+
     Task<SaveProfileOutcome> SaveAsync(
         Guid userId,
         PersonalData personal,

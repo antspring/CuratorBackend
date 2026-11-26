@@ -1,5 +1,6 @@
 using API.Profiles;
 using Application.Mentees;
+using Domain.Mentees;
 
 namespace API.Mentees;
 
@@ -18,6 +19,7 @@ public sealed record MenteePersonalResponse(
 public sealed record MenteeProfileResponse(
     Guid UserId,
     MenteePersonalResponse Personal,
+    IReadOnlyList<MenteeOwnedSkillChoice> OwnedSkills,
     IReadOnlyList<Guid> SkillIds,
     Guid SkillLevelId,
     IReadOnlyList<Guid> TaskIds,
@@ -33,6 +35,7 @@ public sealed record MenteeProfileResponse(
         new(
             profile.UserId,
             MenteePersonalResponse.From(profile),
+            profile.OwnedSkills,
             profile.SkillIds,
             profile.SkillLevelId,
             profile.TaskIds,

@@ -36,6 +36,11 @@ internal sealed class MenteeProfileConfiguration : IEntityTypeConfiguration<Ment
             .HasForeignKey(skill => skill.MenteeId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasMany(profile => profile.OwnedSkills)
+            .WithOne()
+            .HasForeignKey(skill => skill.MenteeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasMany(profile => profile.Tasks)
             .WithOne()
             .HasForeignKey(task => task.MenteeId)
@@ -62,5 +67,17 @@ internal sealed class MenteeTaskConfiguration : IEntityTypeConfiguration<MenteeT
         builder.HasKey(task => new { task.MenteeId, task.TaskId });
 
         builder.HasOne<CatalogItem>().WithMany().HasForeignKey(task => task.TaskId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class MenteeOwnedSkillConfiguration : IEntityTypeConfiguration<MenteeOwnedSkill>
+{
+    public void Configure(EntityTypeBuilder<MenteeOwnedSkill> builder)
+    {
+        builder.ToTable("mentee_owned_skills");
+        builder.HasKey(skill => new { skill.MenteeId, skill.SkillId });
+
+        builder.HasOne<Skill>().WithMany().HasForeignKey(skill => skill.SkillId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<CatalogItem>().WithMany().HasForeignKey(skill => skill.SkillLevelId).OnDelete(DeleteBehavior.Restrict);
     }
 }

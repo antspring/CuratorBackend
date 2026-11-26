@@ -19,9 +19,12 @@ public sealed record MenteeProfileInput(
     string Goal,
     Guid GoalDeadlineId);
 
+public sealed record OwnedSkillDto(Guid SkillId, Guid SkillLevelId);
+
 public sealed record MenteeProfileDto(
     Guid UserId,
     PersonalDto Personal,
+    OwnedSkillDto[] OwnedSkills,
     Guid[] SkillIds,
     Guid SkillLevelId,
     Guid[] TaskIds,
@@ -301,6 +304,86 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var personal = (await client.GetFromJsonAsync<JsonElement>(Path)).GetProperty("personal");
         Assert.Equal(input.Personal.FirstName, personal.GetProperty("firstName").GetString());
         Assert.Equal(JsonValueKind.Null, personal.GetProperty("status").ValueKind);
+    }
+
+    [Fact]
+    public async Task PutSkills_ReplacesOwnSkillsAndPreservesQuestionnaire()
+    {
+        var (client, _) = await factory.SignedInClientAsync();
+        var input = await ValidProfileAsync();
+        var initial = await client.PutAsJsonAsync(Path, input);
+        initial.EnsureSuccessStatusCode();
+        Assert.Empty((await initial.ReadAsync<MenteeProfileDto>()).OwnedSkills);
+
+        var catalogs = await factory.CatalogsAsync();
+        var skills = catalogs[CatalogKinds.Skills];
+        var levels = catalogs[CatalogKinds.SkillLevels];
+        var first = new OwnedSkillDto(skills[0], levels[0]);
+        var second = new OwnedSkillDto(skills[2], levels[1]);
+        var updated = first with { SkillLevelId = levels[2] };
+        var skillsPath = $"{Path}/skills";
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync(skillsPath, new { ownedSkills = new[] { first, second } })).StatusCode);
+        var saved = await client.GetFromJsonAsync<MenteeProfileDto>(Path);
+        Assert.Equal(new[] { first, second }.OrderBy(skill => skill.SkillId), saved!.OwnedSkills);
+        Assert.Equal(input.SkillIds.Order(), saved.SkillIds);
+        Assert.Equal(input.SkillLevelId, saved.SkillLevelId);
+
+        var details = PersonalDetails(input);
+        (await client.PutAsJsonAsync($"{Path}/personal", details)).EnsureSuccessStatusCode();
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync(skillsPath, new { ownedSkills = new[] { updated } })).StatusCode);
+        var replaced = await client.GetFromJsonAsync<MenteeProfileDto>(Path);
+        Assert.Equal(updated, Assert.Single(replaced!.OwnedSkills));
+        var personal = (await client.GetFromJsonAsync<JsonElement>(Path)).GetProperty("personal");
+        Assert.Equal(details.University, personal.GetProperty("university").GetString());
+
+        var questionnaire = await client.PutAsJsonAsync(Path, input with { SkillIds = [skills[1]] });
+        questionnaire.EnsureSuccessStatusCode();
+        var afterQuestionnaire = await questionnaire.ReadAsync<MenteeProfileDto>();
+        Assert.Equal(new[] { skills[1] }, afterQuestionnaire.SkillIds);
+        Assert.Equal(updated, Assert.Single(afterQuestionnaire.OwnedSkills));
+
+        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync(skillsPath, new { ownedSkills = Array.Empty<OwnedSkillDto>() })).StatusCode);
+        var cleared = await client.GetFromJsonAsync<MenteeProfileDto>(Path);
+        Assert.Empty(cleared!.OwnedSkills);
+        Assert.Equal(afterQuestionnaire.SkillIds, cleared.SkillIds);
+    }
+
+    [Fact]
+    public async Task PutSkills_InvalidEntriesDoNotChangeSavedSkills()
+    {
+        var (client, _) = await factory.SignedInClientAsync();
+        var input = await ValidProfileAsync();
+        (await client.PutAsJsonAsync(Path, input)).EnsureSuccessStatusCode();
+        var skill = new OwnedSkillDto(input.SkillIds[0], input.SkillLevelId);
+        var skillsPath = $"{Path}/skills";
+        (await client.PutAsJsonAsync(skillsPath, new { ownedSkills = new[] { skill } })).EnsureSuccessStatusCode();
+
+        var wrongLevel = skill with { SkillLevelId = input.FormatId };
+        var wrongSkill = skill with { SkillId = input.SkillLevelId };
+        OwnedSkillDto?[][] invalidLists = [[skill, skill], [wrongLevel], [wrongSkill], [null]];
+        foreach (var invalid in invalidLists)
+        {
+            var response = await client.PutAsJsonAsync(skillsPath, new { ownedSkills = invalid });
+            await ProfileTestData.AssertFieldErrorAsync(response, "ownedSkills");
+        }
+
+        var saved = await client.GetFromJsonAsync<MenteeProfileDto>(Path);
+        Assert.Equal(skill, Assert.Single(saved!.OwnedSkills));
+    }
+
+    [Fact]
+    public async Task PutSkills_RequiresAuthenticationAndAnExistingMenteeProfile()
+    {
+        var skillsPath = $"{Path}/skills";
+        var body = new { ownedSkills = Array.Empty<OwnedSkillDto>() };
+        var anonymous = await factory.CreateClient().PutAsJsonAsync(skillsPath, body);
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+
+        var (client, _) = await factory.SignedInClientAsync();
+        var missing = await client.PutAsJsonAsync(skillsPath, body);
+        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
+        Assert.Equal("resource_not_found", (await missing.ReadAsync<ProblemDto>()).Code);
     }
 
     private sealed record PersonalDetailsInput(string FirstName, string LastName, int Age, Guid CityId, Guid? PhotoFileId,

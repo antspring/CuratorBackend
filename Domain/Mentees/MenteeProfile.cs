@@ -7,6 +7,7 @@ public sealed class MenteeProfile
     public const int StatusMaxLength = 100;
     public const int EducationMaxLength = 200;
     public const int AboutMeMaxLength = 300;
+    public const int MaxOwnedSkills = 50;
 
     public string? Status { get; private set; }
     public string? University { get; private set; }
@@ -15,6 +16,7 @@ public sealed class MenteeProfile
 
     private readonly List<MenteeSkill> skills = [];
     private readonly List<MenteeTask> tasks = [];
+    private readonly List<MenteeOwnedSkill> ownedSkills = [];
 
     private MenteeProfile()
     {
@@ -45,6 +47,25 @@ public sealed class MenteeProfile
     public IReadOnlyCollection<MenteeSkill> Skills => skills;
 
     public IReadOnlyCollection<MenteeTask> Tasks => tasks;
+
+    public IReadOnlyCollection<MenteeOwnedSkill> OwnedSkills => ownedSkills;
+
+    public void ReplaceOwnedSkills(IReadOnlyList<MenteeOwnedSkillChoice> choices)
+    {
+        var ids = Require.Ids(choices.Select(choice => choice.SkillId), 0, MaxOwnedSkills, nameof(OwnedSkills));
+        if (choices.Any(choice => choice.SkillLevelId == Guid.Empty))
+        {
+            throw new DomainException(nameof(OwnedSkills), "Для каждого навыка выберите уровень.");
+        }
+
+        var byId = choices.ToDictionary(choice => choice.SkillId);
+
+        Sync(ownedSkills, ids, skill => skill.SkillId, skillId => new MenteeOwnedSkill(UserId, byId[skillId]));
+        foreach (var skill in ownedSkills)
+        {
+            skill.SkillLevelId = byId[skill.SkillId].SkillLevelId;
+        }
+    }
 
     public void UpdatePersonalDetails(string status, string university, string? specialty, string? aboutMe)
     {

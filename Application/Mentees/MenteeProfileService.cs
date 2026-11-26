@@ -27,6 +27,18 @@ public sealed class MenteeProfileService(
         return updated ? await FindAsync(command.UserId, cancellationToken) : null;
     }
 
+    public async Task<bool> ReplaceOwnedSkillsAsync(
+        Guid userId, IReadOnlyList<MenteeOwnedSkillChoice> choices, CancellationToken cancellationToken)
+    {
+        await validator.EnsureCatalogReferencesAsync(
+        [
+            new(nameof(MenteeProfile.OwnedSkills), CatalogKinds.Skills, choices.Select(choice => choice.SkillId).ToArray()),
+            new(nameof(MenteeProfile.OwnedSkills), CatalogKinds.SkillLevels, choices.Select(choice => choice.SkillLevelId).ToArray()),
+        ], cancellationToken);
+
+        return await store.ReplaceOwnedSkillsAsync(userId, choices, timeProvider.GetUtcNow(), cancellationToken);
+    }
+
     public async Task<SaveMenteeProfileResult> SaveAsync(SaveMenteeProfileCommand command, CancellationToken cancellationToken)
     {
         var answers = new MenteeAnswers(

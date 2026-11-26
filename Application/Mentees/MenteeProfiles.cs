@@ -36,6 +36,7 @@ public sealed record MenteeProfileView(
     string? University,
     string? Specialty,
     string? AboutMe,
+    IReadOnlyList<MenteeOwnedSkillChoice> OwnedSkills,
     IReadOnlyList<Guid> SkillIds,
     Guid SkillLevelId,
     IReadOnlyList<Guid> TaskIds,
@@ -55,6 +56,8 @@ public sealed record MenteeProfileView(
             mentee.University,
             mentee.Specialty,
             mentee.AboutMe,
+            mentee.OwnedSkills.OrderBy(skill => skill.SkillId)
+                .Select(skill => new MenteeOwnedSkillChoice(skill.SkillId, skill.SkillLevelId)).ToArray(),
             mentee.Skills.Select(skill => skill.SkillId).Order().ToList(),
             mentee.SkillLevelId,
             mentee.Tasks.Select(task => task.TaskId).Order().ToList(),
