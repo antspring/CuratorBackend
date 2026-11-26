@@ -57,6 +57,23 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
     private const string Path = "/api/v1/me/mentee-profile";
 
     [Fact]
+    public async Task MentorCard_ForAnotherMenteeWithAvatar_ReturnsNotFound()
+    {
+        var (owner, ownerTokens) = await factory.SignedInClientAsync();
+        var (viewer, _) = await factory.SignedInClientAsync();
+        var input = await ValidProfileAsync();
+        var avatar = await ProfileTestData.UploadAvatarAsync(owner);
+        var withPhoto = input with { Personal = input.Personal with { PhotoFileId = avatar } };
+        (await owner.PutAsJsonAsync(Path, withPhoto)).EnsureSuccessStatusCode();
+        (await viewer.PutAsJsonAsync(Path, input)).EnsureSuccessStatusCode();
+
+        var response = await viewer.GetAsync($"/api/v1/mentors/{ownerTokens.Account.Id}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("resource_not_found", (await response.ReadAsync<ProblemDto>()).Code);
+    }
+
+    [Fact]
     public async Task Get_BeforeSave_ReturnsNotFound()
     {
         var (client, _) = await factory.SignedInClientAsync();

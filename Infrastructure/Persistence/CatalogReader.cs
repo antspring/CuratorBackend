@@ -47,18 +47,18 @@ internal sealed class CatalogReader(AppDbContext db) : ICatalogReader, ICatalogL
 
         var skills = db.Skills.AsNoTracking()
             .Where(skill => ids.Contains(skill.Id))
-            .Select(skill => new { skill.Id, Kind = CatalogKinds.Skills, skill.Name });
+            .Select(skill => new { skill.Id, Kind = CatalogKinds.Skills, skill.Name, SortOrder = (short)0 });
 
         var cities = db.Cities.AsNoTracking()
             .Where(city => ids.Contains(city.Id))
-            .Select(city => new { city.Id, Kind = CatalogKinds.Cities, city.Name });
+            .Select(city => new { city.Id, Kind = CatalogKinds.Cities, city.Name, SortOrder = (short)0 });
 
         var items = db.CatalogItems.AsNoTracking()
             .Where(item => ids.Contains(item.Id))
-            .Select(item => new { item.Id, item.Kind, item.Name });
+            .Select(item => new { item.Id, item.Kind, item.Name, item.SortOrder });
 
         return await skills.Concat(cities).Concat(items)
-            .ToDictionaryAsync(row => row.Id, row => new CatalogRef(row.Id, row.Kind, row.Name), cancellationToken);
+            .ToDictionaryAsync(row => row.Id, row => new CatalogRef(row.Id, row.Kind, row.Name, row.SortOrder), cancellationToken);
     }
 
     private IQueryable<Row> Rows(string kind) => kind switch

@@ -42,10 +42,14 @@ public static class ProfileTestData
         await using var scope = factory.Services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
 
-        var catalogs = await db.CatalogItems
+        var items = await db.CatalogItems
             .OrderBy(item => item.SortOrder)
+            .Select(item => new { item.Kind, item.Id })
+            .ToListAsync();
+
+        var catalogs = items
             .GroupBy(item => item.Kind)
-            .ToDictionaryAsync(group => group.Key, group => group.Select(item => item.Id).ToList());
+            .ToDictionary(group => group.Key, group => group.Select(item => item.Id).ToList());
 
         catalogs[CatalogKinds.Skills] = await db.Skills.OrderBy(skill => skill.Code).Select(skill => skill.Id).ToListAsync();
         catalogs[CatalogKinds.Cities] = await db.Cities.OrderBy(city => city.Code).Select(city => city.Id).ToListAsync();

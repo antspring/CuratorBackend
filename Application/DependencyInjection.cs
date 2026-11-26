@@ -22,6 +22,7 @@ public static class DependencyInjection
         services.AddScoped<ProfileInputValidator>();
         services.AddScoped<MenteeProfileService>();
         services.AddScoped<MentorProfileService>();
+        services.AddScoped<MentorCardService>();
 
         return services;
     }
