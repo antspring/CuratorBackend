@@ -197,6 +197,11 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("user_id");
 
+                    b.Property<string>("AboutMe")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("about_me");
+
                     b.Property<Guid>("AvailabilityId")
                         .HasColumnType("uuid")
                         .HasColumnName("availability_id");
@@ -227,6 +232,21 @@ namespace Infrastructure.Persistence.Migrations
                     b.Property<Guid>("SkillLevelId")
                         .HasColumnType("uuid")
                         .HasColumnName("skill_level_id");
+
+                    b.Property<string>("Specialty")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("specialty");
+
+                    b.Property<string>("Status")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("status");
+
+                    b.Property<string>("University")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("university");
 
                     b.HasKey("UserId")
                         .HasName("pk_mentee_profiles");

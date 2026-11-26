@@ -18,6 +18,15 @@ public sealed class MenteeProfileService(
         return snapshot is null ? null : ToView(snapshot);
     }
 
+    public async Task<MenteeProfileView?> UpdatePersonalAsync(SaveMenteePersonalCommand command, CancellationToken cancellationToken)
+    {
+        await validator.EnsureCatalogReferencesAsync(
+            [new(nameof(command.CityId), CatalogKinds.Cities, [command.CityId])], cancellationToken);
+        var photo = await validator.FindPhotoAsync(command.UserId, command.PhotoFileId, nameof(command.PhotoFileId), cancellationToken);
+        var updated = await store.UpdatePersonalAsync(command, photo, timeProvider.GetUtcNow(), cancellationToken);
+        return updated ? await FindAsync(command.UserId, cancellationToken) : null;
+    }
+
     public async Task<SaveMenteeProfileResult> SaveAsync(SaveMenteeProfileCommand command, CancellationToken cancellationToken)
     {
         var answers = new MenteeAnswers(

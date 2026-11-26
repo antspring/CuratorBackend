@@ -3,9 +3,21 @@ using Application.Mentees;
 
 namespace API.Mentees;
 
+public sealed record MenteePersonalResponse(
+    string FirstName, string LastName, int Age, Guid CityId, Guid LanguageId, Guid? PhotoFileId, Uri? PhotoUrl,
+    string? Status, string? University, string? Specialty, string? AboutMe)
+{
+    public static MenteePersonalResponse From(MenteeProfileView profile)
+    {
+        var personal = profile.Personal;
+        return new(personal.FirstName, personal.LastName, personal.Age, personal.CityId, personal.LanguageId,
+            personal.PhotoFileId, personal.PhotoUrl, profile.Status, profile.University, profile.Specialty, profile.AboutMe);
+    }
+}
+
 public sealed record MenteeProfileResponse(
     Guid UserId,
-    PersonalInfoResponse Personal,
+    MenteePersonalResponse Personal,
     IReadOnlyList<Guid> SkillIds,
     Guid SkillLevelId,
     IReadOnlyList<Guid> TaskIds,
@@ -20,7 +32,7 @@ public sealed record MenteeProfileResponse(
     public static MenteeProfileResponse From(MenteeProfileView profile) =>
         new(
             profile.UserId,
-            PersonalInfoResponse.From(profile.Personal),
+            MenteePersonalResponse.From(profile),
             profile.SkillIds,
             profile.SkillLevelId,
             profile.TaskIds,

@@ -4,6 +4,15 @@ namespace Domain.Mentees;
 
 public sealed class MenteeProfile
 {
+    public const int StatusMaxLength = 100;
+    public const int EducationMaxLength = 200;
+    public const int AboutMeMaxLength = 300;
+
+    public string? Status { get; private set; }
+    public string? University { get; private set; }
+    public string? Specialty { get; private set; }
+    public string? AboutMe { get; private set; }
+
     private readonly List<MenteeSkill> skills = [];
     private readonly List<MenteeTask> tasks = [];
 
@@ -36,6 +45,14 @@ public sealed class MenteeProfile
     public IReadOnlyCollection<MenteeSkill> Skills => skills;
 
     public IReadOnlyCollection<MenteeTask> Tasks => tasks;
+
+    public void UpdatePersonalDetails(string status, string university, string? specialty, string? aboutMe)
+    {
+        Status = Require.Text(status, 1, StatusMaxLength, nameof(Status));
+        University = Require.Text(university, 1, EducationMaxLength, nameof(University));
+        Specialty = string.IsNullOrWhiteSpace(specialty) ? null : Require.Text(specialty, 1, EducationMaxLength, nameof(Specialty));
+        AboutMe = string.IsNullOrWhiteSpace(aboutMe) ? null : Require.Text(aboutMe, 1, AboutMeMaxLength, nameof(AboutMe));
+    }
 
     public void Update(MenteeAnswers answers)
     {

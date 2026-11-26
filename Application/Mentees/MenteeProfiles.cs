@@ -4,6 +4,18 @@ using Domain.Users;
 
 namespace Application.Mentees;
 
+public sealed record SaveMenteePersonalCommand(
+    Guid UserId,
+    string FirstName,
+    string LastName,
+    int Age,
+    Guid CityId,
+    Guid? PhotoFileId,
+    string Status,
+    string University,
+    string? Specialty,
+    string? AboutMe);
+
 public sealed record SaveMenteeProfileCommand(
     Guid UserId,
     PersonalInput Personal,
@@ -20,6 +32,10 @@ public sealed record SaveMenteeProfileCommand(
 public sealed record MenteeProfileView(
     Guid UserId,
     PersonalView Personal,
+    string? Status,
+    string? University,
+    string? Specialty,
+    string? AboutMe,
     IReadOnlyList<Guid> SkillIds,
     Guid SkillLevelId,
     IReadOnlyList<Guid> TaskIds,
@@ -35,6 +51,10 @@ public sealed record MenteeProfileView(
         new(
             mentee.UserId,
             PersonalView.From(personal, photoUrl),
+            mentee.Status,
+            mentee.University,
+            mentee.Specialty,
+            mentee.AboutMe,
             mentee.Skills.Select(skill => skill.SkillId).Order().ToList(),
             mentee.SkillLevelId,
             mentee.Tasks.Select(task => task.TaskId).Order().ToList(),

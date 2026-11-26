@@ -1,4 +1,5 @@
 using Application.Profiles;
+using Domain.Files;
 using Domain.Mentees;
 using Domain.Users;
 
@@ -7,6 +8,9 @@ namespace Application.Mentees;
 public interface IMenteeProfileStore
 {
     Task<MenteeProfileSnapshot?> FindAsync(Guid userId, CancellationToken cancellationToken);
+
+    Task<bool> UpdatePersonalAsync(
+        SaveMenteePersonalCommand command, StoredFile? photo, DateTimeOffset now, CancellationToken cancellationToken);
 
     Task<SaveProfileOutcome> SaveAsync(
         Guid userId,

@@ -1,6 +1,7 @@
 using System.Transactions;
 using Application.Mentees;
 using Application.Profiles;
+using Domain.Files;
 using Domain.Mentees;
 using Domain.Users;
 using Infrastructure.Persistence;
@@ -27,6 +28,35 @@ internal sealed class MenteeProfileStore(AppDbContext db, PersonalProfileStore p
         var personal = await personalProfiles.LoadAsync(userId, cancellationToken);
 
         return new MenteeProfileSnapshot(personal.Profile, mentee, personal.PhotoStorageKey);
+    }
+
+    public async Task<bool> UpdatePersonalAsync(
+        SaveMenteePersonalCommand command, StoredFile? photo, DateTimeOffset now, CancellationToken cancellationToken)
+    {
+        await using var transaction = Transaction.Current is null
+            ? await db.Database.BeginTransactionAsync(cancellationToken)
+            : null;
+        if (!await personalProfiles.LockUserAsync(command.UserId, cancellationToken))
+        {
+            return false;
+        }
+
+        var mentee = await db.MenteeProfiles.SingleOrDefaultAsync(profile => profile.UserId == command.UserId, cancellationToken);
+        if (mentee is null)
+        {
+            return false;
+        }
+
+        var personal = await db.UserProfiles.SingleAsync(profile => profile.UserId == command.UserId, cancellationToken);
+        personal.Update(new PersonalData(command.FirstName, command.LastName, command.Age, command.CityId, personal.LanguageId, photo), now);
+        mentee.UpdatePersonalDetails(command.Status, command.University, command.Specialty, command.AboutMe);
+        await db.SaveChangesAsync(cancellationToken);
+        if (transaction is not null)
+        {
+            await transaction.CommitAsync(cancellationToken);
+        }
+
+        return true;
     }
 
     public async Task<SaveProfileOutcome> SaveAsync(

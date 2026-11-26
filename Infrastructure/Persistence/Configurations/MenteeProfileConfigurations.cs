@@ -14,6 +14,10 @@ internal sealed class MenteeProfileConfiguration : IEntityTypeConfiguration<Ment
         builder.HasKey(profile => profile.UserId);
 
         builder.Property(profile => profile.UserId).ValueGeneratedNever();
+        builder.Property(profile => profile.Status).HasMaxLength(MenteeProfile.StatusMaxLength);
+        builder.Property(profile => profile.University).HasMaxLength(MenteeProfile.EducationMaxLength);
+        builder.Property(profile => profile.Specialty).HasMaxLength(MenteeProfile.EducationMaxLength);
+        builder.Property(profile => profile.AboutMe).HasMaxLength(MenteeProfile.AboutMeMaxLength);
         builder.Property(profile => profile.BudgetFrom).HasPrecision(12, 2);
         builder.Property(profile => profile.BudgetTo).HasPrecision(12, 2);
 

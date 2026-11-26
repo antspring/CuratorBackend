@@ -222,6 +222,93 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Contains("goal", problem.Errors.Keys);
     }
 
+    [Fact]
+    public async Task PutPersonal_PreservesQuestionnaireAndSurvivesQuestionnaireUpdates()
+    {
+        var (client, _) = await factory.SignedInClientAsync();
+        var input = await ValidProfileAsync();
+        var initial = await client.PutAsJsonAsync(Path, input);
+        initial.EnsureSuccessStatusCode();
+        var initialJson = await initial.ReadAsync<JsonElement>();
+        Assert.Equal(JsonValueKind.Null, initialJson.GetProperty("personal").GetProperty("university").ValueKind);
+
+        var photoId = await ProfileTestData.UploadAvatarAsync(client);
+        var details = PersonalDetails(input) with { PhotoFileId = photoId };
+        var update = await client.PutAsJsonAsync($"{Path}/personal", details);
+        update.EnsureSuccessStatusCode();
+        var saved = await update.ReadAsync<JsonElement>();
+        Assert.Equal("Мария", saved.GetProperty("firstName").GetString());
+        Assert.Equal(photoId, saved.GetProperty("photoFileId").GetGuid());
+        Assert.NotNull(saved.GetProperty("photoUrl").GetString());
+        Assert.Equal(input.Personal.LanguageId, saved.GetProperty("languageId").GetGuid());
+        Assert.Equal("Студентка", saved.GetProperty("status").GetString());
+
+        var after = await client.GetFromJsonAsync<MenteeProfileDto>(Path);
+        Assert.Equal(input.Goal, after!.Goal);
+        Assert.Equal(input.SkillIds.Order(), after.SkillIds.Order());
+        Assert.Equal(input.BudgetTo, after.BudgetTo);
+
+        (await client.PutAsJsonAsync(Path, input)).EnsureSuccessStatusCode();
+        var profile = await client.GetFromJsonAsync<JsonElement>(Path);
+        var personal = profile.GetProperty("personal");
+        Assert.Equal(input.Personal.FirstName, personal.GetProperty("firstName").GetString());
+        Assert.Equal("Студентка", personal.GetProperty("status").GetString());
+        Assert.Equal(details.University, personal.GetProperty("university").GetString());
+        Assert.Equal(details.Specialty, personal.GetProperty("specialty").GetString());
+        Assert.Equal(details.AboutMe, personal.GetProperty("aboutMe").GetString());
+
+        var cleared = await client.PutAsJsonAsync($"{Path}/personal", details with { Specialty = null, AboutMe = null });
+        cleared.EnsureSuccessStatusCode();
+        var clearedJson = await cleared.ReadAsync<JsonElement>();
+        Assert.Equal(JsonValueKind.Null, clearedJson.GetProperty("specialty").ValueKind);
+        Assert.Equal(JsonValueKind.Null, clearedJson.GetProperty("aboutMe").ValueKind);
+    }
+
+    [Fact]
+    public async Task PutPersonal_RequiresAuthenticationAndAnExistingMenteeProfile()
+    {
+        var input = PersonalDetails(await ValidProfileAsync());
+        var path = $"{Path}/personal";
+        var anonymous = await factory.CreateClient().PutAsJsonAsync(path, input);
+        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
+
+        var (client, tokens) = await factory.SignedInClientAsync();
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync(path, input)).StatusCode);
+        Assert.Empty((await (await client.RefreshAsync(tokens.RefreshToken)).ReadAsync<TokenPairDto>()).Account.Roles);
+        await factory.AddRoleAsync(tokens.Account.Id, Roles.Mentor);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync(path, input)).StatusCode);
+    }
+
+    [Fact]
+    public async Task PutPersonal_InvalidFieldsAndForeignAvatarLeaveProfileIntact()
+    {
+        var (client, _) = await factory.SignedInClientAsync();
+        var input = await ValidProfileAsync();
+        (await client.PutAsJsonAsync(Path, input)).EnsureSuccessStatusCode();
+        var details = PersonalDetails(input);
+        var (other, _) = await factory.SignedInClientAsync();
+        var foreignPhoto = await ProfileTestData.UploadAvatarAsync(other);
+        var path = $"{Path}/personal";
+
+        await ProfileTestData.AssertFieldErrorAsync(await client.PutAsJsonAsync(path, details with { PhotoFileId = foreignPhoto }), "photoFileId");
+        await ProfileTestData.AssertFieldErrorAsync(await client.PutAsJsonAsync(path, details with { CityId = input.SkillLevelId }), "cityId");
+        var invalid = await client.PutAsJsonAsync(path, details with { Status = " ", University = "", AboutMe = new string('а', 301) });
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
+        var errors = (await invalid.ReadAsync<ProblemDto>()).Errors!;
+        Assert.Contains("status", errors.Keys);
+        Assert.Contains("university", errors.Keys);
+        Assert.Contains("aboutMe", errors.Keys);
+        var personal = (await client.GetFromJsonAsync<JsonElement>(Path)).GetProperty("personal");
+        Assert.Equal(input.Personal.FirstName, personal.GetProperty("firstName").GetString());
+        Assert.Equal(JsonValueKind.Null, personal.GetProperty("status").ValueKind);
+    }
+
+    private sealed record PersonalDetailsInput(string FirstName, string LastName, int Age, Guid CityId, Guid? PhotoFileId,
+        string Status, string University, string? Specialty, string? AboutMe);
+
+    private static PersonalDetailsInput PersonalDetails(MenteeProfileInput input) =>
+        new("Мария", "Сидорова", 20, input.Personal.CityId, null, " Студентка ", "УрФУ", "Прикладная информатика", "Изучаю анализ данных.");
+
     private async Task<MenteeProfileInput> ValidProfileAsync()
     {
         var catalogs = await factory.CatalogsAsync();
