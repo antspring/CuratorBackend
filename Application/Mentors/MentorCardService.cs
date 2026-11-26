@@ -31,6 +31,9 @@ public sealed class MentorCardService(IMentorProfileStore store, ICatalogLookup 
         var found = await catalogs.FindAsync(ids.Distinct().ToList(), cancellationToken);
         LookupView Lookup(Guid id) => new(id, found[id].Name);
 
+        var currentWorkplace = mentor.Workplaces.Where(workplace => workplace.IsCurrent)
+            .MinBy(workplace => workplace.SortOrder);
+
         return new MentorCardView(
             mentor.UserId,
             personal.FirstName,
@@ -40,6 +43,7 @@ public sealed class MentorCardService(IMentorProfileStore store, ICatalogLookup 
             Lookup(personal.CityId),
             Lookup(personal.LanguageId),
             Lookup(mentor.PositionId),
+            currentWorkplace is null ? null : new MentorCurrentWorkplaceView(currentWorkplace.Company, currentWorkplace.Title),
             Lookup(mentor.ExperienceId),
             mentor.Skills
                 .Select(skill => new MentorSkillView(Lookup(skill.SkillId), Lookup(skill.SkillLevelId)))
