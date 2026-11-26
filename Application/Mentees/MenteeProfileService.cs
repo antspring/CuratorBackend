@@ -39,6 +39,19 @@ public sealed class MenteeProfileService(
         return await store.ReplaceOwnedSkillsAsync(userId, choices, timeProvider.GetUtcNow(), cancellationToken);
     }
 
+    public async Task<bool> ReplaceGoalsAsync(
+        Guid userId, IReadOnlyList<MenteeGoalChoice> choices, CancellationToken cancellationToken)
+    {
+        var references = choices.SelectMany((choice, index) => new CatalogReference[]
+        {
+            new($"Goals[{index}].{nameof(choice.DeadlineId)}", CatalogKinds.GoalDeadlines, [choice.DeadlineId]),
+            new($"Goals[{index}].{nameof(choice.DirectionIds)}", CatalogKinds.MentoringDirections, choice.DirectionIds),
+        }).ToArray();
+        await validator.EnsureCatalogReferencesAsync(references, cancellationToken);
+
+        return await store.ReplaceGoalsAsync(userId, choices, timeProvider.GetUtcNow(), cancellationToken);
+    }
+
     public async Task<SaveMenteeProfileResult> SaveAsync(SaveMenteeProfileCommand command, CancellationToken cancellationToken)
     {
         var answers = new MenteeAnswers(

@@ -46,6 +46,7 @@ public sealed record MenteeProfileView(
     decimal? BudgetTo,
     string Goal,
     Guid GoalDeadlineId,
+    IReadOnlyList<MenteeGoalChoice> Goals,
     DateTimeOffset UpdatedAt)
 {
     public static MenteeProfileView From(UserProfile personal, MenteeProfile mentee, Uri? photoUrl) =>
@@ -67,6 +68,10 @@ public sealed record MenteeProfileView(
             mentee.BudgetTo,
             mentee.Goal,
             mentee.GoalDeadlineId,
+            mentee.Goals.OrderBy(goal => goal.SortOrder)
+                .Select(goal => new MenteeGoalChoice(goal.Id, goal.Text, goal.DeadlineId,
+                    goal.Directions.Select(direction => direction.DirectionId).Order().ToArray()))
+                .ToArray(),
             personal.UpdatedAt);
 }
 

@@ -29,6 +29,7 @@ public sealed record MenteeProfileResponse(
     string? BudgetTo,
     string Goal,
     Guid GoalDeadlineId,
+    IReadOnlyList<MenteeGoalChoice> Goals,
     DateTimeOffset UpdatedAt)
 {
     public static MenteeProfileResponse From(MenteeProfileView profile) =>
@@ -45,5 +46,6 @@ public sealed record MenteeProfileResponse(
             Money.Format(profile.BudgetTo),
             profile.Goal,
             profile.GoalDeadlineId,
+            profile.Goals,
             profile.UpdatedAt);
 }

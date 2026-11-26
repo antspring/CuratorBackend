@@ -41,6 +41,11 @@ internal sealed class MenteeProfileConfiguration : IEntityTypeConfiguration<Ment
             .HasForeignKey(skill => skill.MenteeId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasMany(profile => profile.Goals)
+            .WithOne()
+            .HasForeignKey(goal => goal.MenteeId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasMany(profile => profile.Tasks)
             .WithOne()
             .HasForeignKey(task => task.MenteeId)

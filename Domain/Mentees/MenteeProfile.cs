@@ -8,6 +8,7 @@ public sealed class MenteeProfile
     public const int EducationMaxLength = 200;
     public const int AboutMeMaxLength = 300;
     public const int MaxOwnedSkills = 50;
+    public const int MaxGoals = 20;
 
     public string? Status { get; private set; }
     public string? University { get; private set; }
@@ -17,6 +18,7 @@ public sealed class MenteeProfile
     private readonly List<MenteeSkill> skills = [];
     private readonly List<MenteeTask> tasks = [];
     private readonly List<MenteeOwnedSkill> ownedSkills = [];
+    private readonly List<MenteeGoal> goals = [];
 
     private MenteeProfile()
     {
@@ -26,6 +28,9 @@ public sealed class MenteeProfile
     {
         UserId = Require.Id(userId, nameof(UserId));
         Update(answers);
+        var firstGoal = new MenteeGoal(UserId, Guid.CreateVersion7());
+        firstGoal.SetQuestionnaireGoal(Goal, GoalDeadlineId);
+        goals.Add(firstGoal);
     }
 
     public Guid UserId { get; private set; }
@@ -49,6 +54,21 @@ public sealed class MenteeProfile
     public IReadOnlyCollection<MenteeTask> Tasks => tasks;
 
     public IReadOnlyCollection<MenteeOwnedSkill> OwnedSkills => ownedSkills;
+
+    public IReadOnlyCollection<MenteeGoal> Goals => goals;
+
+    public void ReplaceGoals(IReadOnlyList<MenteeGoalChoice> choices)
+    {
+        var ids = Require.Ids(choices.Select(choice => choice.Id), 0, MaxGoals, nameof(Goals));
+        Sync(goals, ids, goal => goal.Id, id => new MenteeGoal(UserId, id));
+
+        var byId = goals.ToDictionary(goal => goal.Id);
+        for (var index = 0; index < choices.Count; index++)
+        {
+            var choice = choices[index];
+            byId[choice.Id].Update(choice, index, $"Goals[{index}]");
+        }
+    }
 
     public void ReplaceOwnedSkills(IReadOnlyList<MenteeOwnedSkillChoice> choices)
     {

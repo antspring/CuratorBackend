@@ -15,6 +15,9 @@ public interface IMenteeProfileStore
     Task<bool> ReplaceOwnedSkillsAsync(
         Guid userId, IReadOnlyList<MenteeOwnedSkillChoice> choices, DateTimeOffset now, CancellationToken cancellationToken);
 
+    Task<bool> ReplaceGoalsAsync(
+        Guid userId, IReadOnlyList<MenteeGoalChoice> choices, DateTimeOffset now, CancellationToken cancellationToken);
+
     Task<SaveProfileOutcome> SaveAsync(
         Guid userId,
         PersonalData personal,

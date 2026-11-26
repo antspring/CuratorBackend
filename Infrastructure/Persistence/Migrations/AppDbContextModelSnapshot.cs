@@ -191,6 +191,62 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("files", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Mentees.MenteeGoal", b =>
+                {
+                    b.Property<Guid>("MenteeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mentee_id");
+
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("DeadlineId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("deadline_id");
+
+                    b.Property<int>("SortOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("sort_order");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("text");
+
+                    b.HasKey("MenteeId", "Id")
+                        .HasName("pk_mentee_profile_goals");
+
+                    b.HasIndex("DeadlineId")
+                        .HasDatabaseName("ix_mentee_profile_goals_deadline_id");
+
+                    b.ToTable("mentee_profile_goals", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Mentees.MenteeGoalDirection", b =>
+                {
+                    b.Property<Guid>("MenteeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mentee_id");
+
+                    b.Property<Guid>("GoalId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("goal_id");
+
+                    b.Property<Guid>("DirectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("direction_id");
+
+                    b.HasKey("MenteeId", "GoalId", "DirectionId")
+                        .HasName("pk_mentee_profile_goal_directions");
+
+                    b.HasIndex("DirectionId")
+                        .HasDatabaseName("ix_mentee_profile_goal_directions_direction_id");
+
+                    b.ToTable("mentee_profile_goal_directions", (string)null);
+                });
+
             modelBuilder.Entity("Domain.Mentees.MenteeOwnedSkill", b =>
                 {
                     b.Property<Guid>("MenteeId")
@@ -875,6 +931,40 @@ namespace Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_files_users_owner_id");
                 });
 
+            modelBuilder.Entity("Domain.Mentees.MenteeGoal", b =>
+                {
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("DeadlineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_profile_goals_catalog_items_deadline_id");
+
+                    b.HasOne("Domain.Mentees.MenteeProfile", null)
+                        .WithMany("Goals")
+                        .HasForeignKey("MenteeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_profile_goals_mentee_profiles_mentee_id");
+                });
+
+            modelBuilder.Entity("Domain.Mentees.MenteeGoalDirection", b =>
+                {
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("DirectionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_profile_goal_directions_catalog_items_direction_id");
+
+                    b.HasOne("Domain.Mentees.MenteeGoal", null)
+                        .WithMany("Directions")
+                        .HasForeignKey("MenteeId", "GoalId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentee_profile_goal_directions_mentee_profile_goals_mentee_");
+                });
+
             modelBuilder.Entity("Domain.Mentees.MenteeOwnedSkill", b =>
                 {
                     b.HasOne("Domain.Mentees.MenteeProfile", null)
@@ -1154,8 +1244,15 @@ namespace Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_user_tokens_users_user_id");
                 });
 
+            modelBuilder.Entity("Domain.Mentees.MenteeGoal", b =>
+                {
+                    b.Navigation("Directions");
+                });
+
             modelBuilder.Entity("Domain.Mentees.MenteeProfile", b =>
                 {
+                    b.Navigation("Goals");
+
                     b.Navigation("OwnedSkills");
 
                     b.Navigation("Skills");

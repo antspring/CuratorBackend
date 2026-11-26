@@ -17,6 +17,7 @@ internal sealed class MenteeProfileStore(AppDbContext db, PersonalProfileStore p
         var mentee = await db.MenteeProfiles.AsNoTracking()
             .Include(profile => profile.Skills)
             .Include(profile => profile.OwnedSkills)
+            .Include(profile => profile.Goals).ThenInclude(goal => goal.Directions)
             .Include(profile => profile.Tasks)
             .AsSplitQuery()
             .SingleOrDefaultAsync(profile => profile.UserId == userId, cancellationToken);
@@ -31,37 +32,37 @@ internal sealed class MenteeProfileStore(AppDbContext db, PersonalProfileStore p
         return new MenteeProfileSnapshot(personal.Profile, mentee, personal.PhotoStorageKey);
     }
 
-    public async Task<bool> UpdatePersonalAsync(
-        SaveMenteePersonalCommand command, StoredFile? photo, DateTimeOffset now, CancellationToken cancellationToken)
-    {
-        await using var transaction = Transaction.Current is null
-            ? await db.Database.BeginTransactionAsync(cancellationToken)
-            : null;
-        if (!await personalProfiles.LockUserAsync(command.UserId, cancellationToken))
+    public Task<bool> UpdatePersonalAsync(
+        SaveMenteePersonalCommand command, StoredFile? photo, DateTimeOffset now, CancellationToken cancellationToken) =>
+        UpdateSectionAsync(command.UserId, db.MenteeProfiles, (mentee, personal) =>
         {
-            return false;
-        }
+            personal.Update(new PersonalData(command.FirstName, command.LastName, command.Age, command.CityId, personal.LanguageId, photo), now);
+            mentee.UpdatePersonalDetails(command.Status, command.University, command.Specialty, command.AboutMe);
+        }, cancellationToken);
 
-        var mentee = await db.MenteeProfiles.SingleOrDefaultAsync(profile => profile.UserId == command.UserId, cancellationToken);
-        if (mentee is null)
-        {
-            return false;
-        }
+    public Task<bool> ReplaceOwnedSkillsAsync(
+        Guid userId, IReadOnlyList<MenteeOwnedSkillChoice> choices, DateTimeOffset now, CancellationToken cancellationToken) =>
+        UpdateSectionAsync(userId, db.MenteeProfiles.Include(profile => profile.OwnedSkills),
+            (mentee, personal) =>
+            {
+                mentee.ReplaceOwnedSkills(choices);
+                personal.MarkUpdated(now);
+            }, cancellationToken);
 
-        var personal = await db.UserProfiles.SingleAsync(profile => profile.UserId == command.UserId, cancellationToken);
-        personal.Update(new PersonalData(command.FirstName, command.LastName, command.Age, command.CityId, personal.LanguageId, photo), now);
-        mentee.UpdatePersonalDetails(command.Status, command.University, command.Specialty, command.AboutMe);
-        await db.SaveChangesAsync(cancellationToken);
-        if (transaction is not null)
-        {
-            await transaction.CommitAsync(cancellationToken);
-        }
+    public Task<bool> ReplaceGoalsAsync(
+        Guid userId, IReadOnlyList<MenteeGoalChoice> choices, DateTimeOffset now, CancellationToken cancellationToken) =>
+        UpdateSectionAsync(userId, db.MenteeProfiles.Include(profile => profile.Goals).ThenInclude(goal => goal.Directions).AsSplitQuery(),
+            (mentee, personal) =>
+            {
+                mentee.ReplaceGoals(choices);
+                personal.MarkUpdated(now);
+            }, cancellationToken);
 
-        return true;
-    }
-
-    public async Task<bool> ReplaceOwnedSkillsAsync(
-        Guid userId, IReadOnlyList<MenteeOwnedSkillChoice> choices, DateTimeOffset now, CancellationToken cancellationToken)
+    private async Task<bool> UpdateSectionAsync(
+        Guid userId,
+        IQueryable<MenteeProfile> profiles,
+        Action<MenteeProfile, UserProfile> update,
+        CancellationToken cancellationToken)
     {
         await using var transaction = Transaction.Current is null
             ? await db.Database.BeginTransactionAsync(cancellationToken)
@@ -71,16 +72,14 @@ internal sealed class MenteeProfileStore(AppDbContext db, PersonalProfileStore p
             return false;
         }
 
-        var mentee = await db.MenteeProfiles.Include(profile => profile.OwnedSkills)
-            .SingleOrDefaultAsync(profile => profile.UserId == userId, cancellationToken);
+        var mentee = await profiles.SingleOrDefaultAsync(profile => profile.UserId == userId, cancellationToken);
         if (mentee is null)
         {
             return false;
         }
 
-        mentee.ReplaceOwnedSkills(choices);
         var personal = await db.UserProfiles.SingleAsync(profile => profile.UserId == userId, cancellationToken);
-        personal.MarkUpdated(now);
+        update(mentee, personal);
         await db.SaveChangesAsync(cancellationToken);
         if (transaction is not null)
         {
