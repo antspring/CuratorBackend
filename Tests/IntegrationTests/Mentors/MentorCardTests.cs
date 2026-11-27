@@ -66,9 +66,9 @@ public class MentorCardTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal("1500.00", card.Price);
         Assert.True(card.HasFreeTrial);
         Assert.Equal(
-            input.Skills.Select(skill => (skill.SkillId, skill.SkillLevelId)).Order(),
+            input.OwnedSkills.Select(skill => (skill.SkillId, skill.SkillLevelId)).Order(),
             card.Skills.Select(skill => (skill.Skill.Id, skill.Level.Id)).Order());
-        Assert.Equal("Эксперт", card.Skills.Single(skill => skill.Skill.Id == input.Skills[0].SkillId).Level.Name);
+        Assert.Equal("Эксперт", card.Skills.Single(skill => skill.Skill.Id == input.OwnedSkills[0].SkillId).Level.Name);
         Assert.Equal([input.DirectionIds[1], input.DirectionIds[0]], card.Directions.Select(direction => direction.Id));
         Assert.Null(card.Rating);
         Assert.Equal(0, card.ReviewCount);

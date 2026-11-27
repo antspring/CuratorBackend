@@ -9,7 +9,7 @@ public interface IMentorProfileStore
     Task<MentorProfileSnapshot?> FindAsync(Guid userId, CancellationToken cancellationToken);
 
     Task<MentorProfileSnapshot?> PatchAsync(
-        Guid userId, IReadOnlyList<MentorWorkplaceInput> workplaces, DateTimeOffset now, CancellationToken cancellationToken);
+        Guid userId, MentorProfilePatch patch, DateTimeOffset now, CancellationToken cancellationToken);
 
     Task<SaveProfileOutcome> SaveAsync(
         Guid userId,

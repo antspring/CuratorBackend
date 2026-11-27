@@ -24,7 +24,7 @@ public sealed class MentorCardService(IMentorProfileStore store, ICatalogLookup 
             mentor.FormatId,
             mentor.AvailabilityId,
             mentor.PricingModelId,
-            .. mentor.Skills.SelectMany(skill => new[] { skill.SkillId, skill.SkillLevelId }),
+            .. mentor.OwnedSkills.SelectMany(skill => new[] { skill.SkillId, skill.SkillLevelId }),
             .. mentor.Directions.Select(direction => direction.DirectionId),
         ];
 
@@ -45,7 +45,7 @@ public sealed class MentorCardService(IMentorProfileStore store, ICatalogLookup 
             Lookup(mentor.PositionId),
             currentWorkplace is null ? null : new MentorCurrentWorkplaceView(currentWorkplace.Company, currentWorkplace.Title),
             Lookup(mentor.ExperienceId),
-            mentor.Skills
+            mentor.OwnedSkills
                 .Select(skill => new MentorSkillView(Lookup(skill.SkillId), Lookup(skill.SkillLevelId)))
                 .OrderBy(skill => skill.Skill.Name, StringComparer.Ordinal)
                 .ToList(),

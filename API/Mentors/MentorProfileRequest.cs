@@ -19,7 +19,7 @@ public sealed class MentorProfileRequest
     [Required]
     [MinLength(1)]
     [MaxLength(MentorAnswers.MaxSkills)]
-    public MentorSkillRequest[] Skills { get; init; } = null!;
+    public MentorSkillRequest?[] OwnedSkills { get; init; } = null!;
 
     [Required]
     [MinLength(1)]
@@ -48,7 +48,7 @@ public sealed class MentorProfileRequest
             Personal.ToInput(),
             PositionId!.Value,
             ExperienceId!.Value,
-            Skills.Select(skill => skill.ToChoice()).ToList(),
+            MentorSkillRequest.ToChoices(OwnedSkills, nameof(OwnedSkills)),
             DirectionIds,
             FormatId!.Value,
             AvailabilityId!.Value,

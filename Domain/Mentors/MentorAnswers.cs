@@ -10,7 +10,7 @@ public sealed class MentorAnswers
     public MentorAnswers(
         Guid positionId,
         Guid experienceId,
-        IEnumerable<MentorSkillChoice> skills,
+        IEnumerable<MentorSkillChoice> ownedSkills,
         IEnumerable<Guid> directionIds,
         Guid formatId,
         Guid availabilityId,
@@ -20,7 +20,8 @@ public sealed class MentorAnswers
     {
         PositionId = Require.Id(positionId, nameof(PositionId));
         ExperienceId = Require.Id(experienceId, nameof(ExperienceId));
-        Skills = RequireSkills(skills);
+        OwnedSkills = ownedSkills?.ToList() ?? [];
+        ValidateSkills(OwnedSkills, 1, nameof(OwnedSkills));
         DirectionIds = Require.Ids(directionIds, 1, MaxDirections, nameof(DirectionIds));
         FormatId = Require.Id(formatId, nameof(FormatId));
         AvailabilityId = Require.Id(availabilityId, nameof(AvailabilityId));
@@ -33,7 +34,7 @@ public sealed class MentorAnswers
 
     public Guid ExperienceId { get; }
 
-    public IReadOnlyList<MentorSkillChoice> Skills { get; }
+    public IReadOnlyList<MentorSkillChoice> OwnedSkills { get; }
 
     public IReadOnlyList<Guid> DirectionIds { get; }
 
@@ -47,17 +48,13 @@ public sealed class MentorAnswers
 
     public bool HasFreeTrial { get; }
 
-    private static IReadOnlyList<MentorSkillChoice> RequireSkills(IEnumerable<MentorSkillChoice>? skills)
+    internal static void ValidateSkills(IReadOnlyList<MentorSkillChoice> choices, int minCount, string field)
     {
-        var choices = skills?.ToList() ?? [];
-
-        Require.Ids(choices.Select(choice => choice.SkillId), 1, MaxSkills, nameof(Skills));
+        Require.Ids(choices.Select(choice => choice.SkillId), minCount, MaxSkills, field);
 
         if (choices.Any(choice => choice.SkillLevelId == Guid.Empty))
         {
-            throw new DomainException(nameof(Skills), "Для каждого навыка выберите уровень.");
+            throw new DomainException(field, "Для каждого навыка выберите уровень.");
         }
-
-        return choices;
     }
 }

@@ -386,6 +386,32 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("mentor_directions", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Mentors.MentorExpectedSkill", b =>
+                {
+                    b.Property<Guid>("MentorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mentor_id");
+
+                    b.Property<Guid>("SkillId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("skill_id");
+
+                    b.Property<Guid>("SkillLevelId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("skill_level_id");
+
+                    b.HasKey("MentorId", "SkillId")
+                        .HasName("pk_mentor_expected_mentee_skills");
+
+                    b.HasIndex("SkillId")
+                        .HasDatabaseName("ix_mentor_expected_mentee_skills_skill_id");
+
+                    b.HasIndex("SkillLevelId")
+                        .HasDatabaseName("ix_mentor_expected_mentee_skills_skill_level_id");
+
+                    b.ToTable("mentor_expected_mentee_skills", (string)null);
+                });
+
             modelBuilder.Entity("Domain.Mentors.MentorProfile", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -1144,6 +1170,30 @@ namespace Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_mentor_directions_mentor_profiles_mentor_id");
                 });
 
+            modelBuilder.Entity("Domain.Mentors.MentorExpectedSkill", b =>
+                {
+                    b.HasOne("Domain.Mentors.MentorProfile", null)
+                        .WithMany("Skills")
+                        .HasForeignKey("MentorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentor_expected_mentee_skills_mentor_profiles_mentor_id");
+
+                    b.HasOne("Domain.Catalogs.Skill", null)
+                        .WithMany()
+                        .HasForeignKey("SkillId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentor_expected_mentee_skills_skills_skill_id");
+
+                    b.HasOne("Domain.Catalogs.CatalogItem", null)
+                        .WithMany()
+                        .HasForeignKey("SkillLevelId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentor_expected_mentee_skills_catalog_items_skill_level_id");
+                });
+
             modelBuilder.Entity("Domain.Mentors.MentorProfile", b =>
                 {
                     b.HasOne("Domain.Catalogs.CatalogItem", null)
@@ -1192,7 +1242,7 @@ namespace Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Domain.Mentors.MentorSkill", b =>
                 {
                     b.HasOne("Domain.Mentors.MentorProfile", null)
-                        .WithMany("Skills")
+                        .WithMany("OwnedSkills")
                         .HasForeignKey("MentorId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
@@ -1339,6 +1389,8 @@ namespace Infrastructure.Persistence.Migrations
             modelBuilder.Entity("Domain.Mentors.MentorProfile", b =>
                 {
                     b.Navigation("Directions");
+
+                    b.Navigation("OwnedSkills");
 
                     b.Navigation("Skills");
 

@@ -7,7 +7,8 @@ public sealed class MentorProfile
     public const int MaxWorkplaces = 20;
 
     private readonly List<MentorWorkplace> workplaces = [];
-    private readonly List<MentorSkill> skills = [];
+    private readonly List<MentorSkill> ownedSkills = [];
+    private readonly List<MentorExpectedSkill> skills = [];
     private readonly List<MentorDirection> directions = [];
 
     private MentorProfile()
@@ -36,7 +37,9 @@ public sealed class MentorProfile
 
     public bool HasFreeTrial { get; private set; }
 
-    public IReadOnlyCollection<MentorSkill> Skills => skills;
+    public IReadOnlyCollection<MentorSkill> OwnedSkills => ownedSkills;
+
+    public IReadOnlyCollection<MentorExpectedSkill> Skills => skills;
 
     public IReadOnlyCollection<MentorDirection> Directions => directions;
 
@@ -96,12 +99,13 @@ public sealed class MentorProfile
         Price = answers.Price;
         HasFreeTrial = answers.HasFreeTrial;
 
-        SyncSkills(answers.Skills);
+        SyncOwnedSkills(answers.OwnedSkills);
         SyncDirections(answers.DirectionIds);
     }
 
-    private void SyncSkills(IReadOnlyList<MentorSkillChoice> choices)
+    public void ReplaceSkills(IReadOnlyList<MentorSkillChoice> choices)
     {
+        MentorAnswers.ValidateSkills(choices, 0, nameof(Skills));
         var levels = choices.ToDictionary(choice => choice.SkillId, choice => choice.SkillLevelId);
 
         skills.RemoveAll(skill => !levels.ContainsKey(skill.SkillId));
@@ -109,10 +113,25 @@ public sealed class MentorProfile
         foreach (var skill in skills)
         {
             skill.SkillLevelId = levels[skill.SkillId];
+            levels.Remove(skill.SkillId);
         }
 
-        var existing = skills.Select(skill => skill.SkillId).ToHashSet();
-        skills.AddRange(choices
+        skills.AddRange(levels.Select(level => new MentorExpectedSkill(UserId, level.Key, level.Value)));
+    }
+
+    private void SyncOwnedSkills(IReadOnlyList<MentorSkillChoice> choices)
+    {
+        var levels = choices.ToDictionary(choice => choice.SkillId, choice => choice.SkillLevelId);
+
+        ownedSkills.RemoveAll(skill => !levels.ContainsKey(skill.SkillId));
+
+        foreach (var skill in ownedSkills)
+        {
+            skill.SkillLevelId = levels[skill.SkillId];
+        }
+
+        var existing = ownedSkills.Select(skill => skill.SkillId).ToHashSet();
+        ownedSkills.AddRange(choices
             .Where(choice => !existing.Contains(choice.SkillId))
             .Select(choice => new MentorSkill(UserId, choice.SkillId, choice.SkillLevelId)));
     }
