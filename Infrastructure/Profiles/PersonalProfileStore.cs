@@ -15,15 +15,17 @@ internal sealed class PersonalProfileStore(AppDbContext db)
         var profile = await db.UserProfiles.AsNoTracking()
             .SingleAsync(existing => existing.UserId == userId, cancellationToken);
 
-        var photoStorageKey = profile.PhotoFileId is { } photoFileId
+        var photoStorageKey = await FindPhotoStorageKeyAsync(profile.PhotoFileId, cancellationToken);
+        return new PersonalSnapshot(profile, photoStorageKey);
+    }
+
+    public async Task<string?> FindPhotoStorageKeyAsync(Guid? photoFileId, CancellationToken cancellationToken) =>
+        photoFileId is { } id
             ? await db.Files.AsNoTracking()
-                .Where(file => file.Id == photoFileId)
+                .Where(file => file.Id == id)
                 .Select(file => file.StorageKey)
                 .SingleAsync(cancellationToken)
             : null;
-
-        return new PersonalSnapshot(profile, photoStorageKey);
-    }
 
     public async Task<bool> LockUserAsync(Guid userId, CancellationToken cancellationToken)
     {

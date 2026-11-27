@@ -7,7 +7,6 @@ public sealed class MenteeProfile
     public const int StatusMaxLength = 100;
     public const int EducationMaxLength = 200;
     public const int AboutMeMaxLength = 300;
-    public const int MaxOwnedSkills = 50;
     public const int MaxGoals = 20;
 
     public string? Status { get; private set; }
@@ -28,14 +27,10 @@ public sealed class MenteeProfile
     {
         UserId = Require.Id(userId, nameof(UserId));
         Update(answers);
-        var firstGoal = new MenteeGoal(UserId, Guid.CreateVersion7());
-        firstGoal.SetQuestionnaireGoal(Goal, GoalDeadlineId);
-        goals.Add(firstGoal);
+        ReplaceGoals(answers.Goals, allowMissingDirections: true);
     }
 
     public Guid UserId { get; private set; }
-
-    public Guid SkillLevelId { get; private set; }
 
     public Guid FormatId { get; private set; }
 
@@ -47,10 +42,6 @@ public sealed class MenteeProfile
 
     public decimal? BudgetTo { get; private set; }
 
-    public string Goal { get; private set; } = null!;
-
-    public Guid GoalDeadlineId { get; private set; }
-
     public IReadOnlyCollection<MenteeSkill> Skills => skills;
 
     public IReadOnlyCollection<MenteeTask> Tasks => tasks;
@@ -59,30 +50,55 @@ public sealed class MenteeProfile
 
     public IReadOnlyCollection<MenteeGoal> Goals => goals;
 
-    public void ReplaceGoals(IReadOnlyList<MenteeGoalChoice> choices)
-    {
-        var ids = Require.Ids(choices.Select(choice => choice.Id), 0, MaxGoals, nameof(Goals));
-        Sync(goals, ids, goal => goal.Id, id => new MenteeGoal(UserId, id));
+    public void ReplaceGoals(IReadOnlyList<MenteeGoalChoice> choices) => ReplaceGoals(choices, allowMissingDirections: false);
 
+    private void ReplaceGoals(IReadOnlyList<MenteeGoalChoice> choices, bool allowMissingDirections)
+    {
+        if (choices.Count > MaxGoals)
+        {
+            throw new DomainException(nameof(Goals), $"Можно указать до {MaxGoals} целей.");
+        }
+
+        var ids = Require.Ids(choices.Where(choice => choice.Id.HasValue).Select(choice => choice.Id!.Value),
+            0, MaxGoals, nameof(Goals)).ToHashSet();
         var byId = goals.ToDictionary(goal => goal.Id);
+        var unmatched = goals.Where(goal => !ids.Contains(goal.Id)).OrderBy(goal => goal.SortOrder).ToList();
+
         for (var index = 0; index < choices.Count; index++)
         {
             var choice = choices[index];
-            byId[choice.Id].Update(choice, index, $"Goals[{index}]");
+            var field = $"Goals[{index}]";
+            var goal = choice.Id is { } id
+                ? byId.GetValueOrDefault(id) ?? throw new DomainException($"{field}.Id", "Цель не найдена в вашем профиле.")
+                : unmatched.Find(candidate => candidate.Matches(choice));
+
+            if (goal is null)
+            {
+                goal = new MenteeGoal(UserId);
+                goal.Update(choice, index, field, allowMissingDirections);
+                goals.Add(goal);
+            }
+            else
+            {
+                goal.Update(choice, index, field, allowMissingDirections);
+                unmatched.Remove(goal);
+            }
         }
+
+        goals.RemoveAll(unmatched.Contains);
     }
 
     public void ReplaceOwnedSkills(IReadOnlyList<MenteeOwnedSkillChoice> choices)
     {
-        var ids = Require.Ids(choices.Select(choice => choice.SkillId), 0, MaxOwnedSkills, nameof(OwnedSkills));
-        if (choices.Any(choice => choice.SkillLevelId == Guid.Empty))
-        {
-            throw new DomainException(nameof(OwnedSkills), "Для каждого навыка выберите уровень.");
-        }
+        MenteeAnswers.ValidateOwnedSkills(choices, minCount: 0);
+        SyncOwnedSkills(choices);
+    }
 
+    private void SyncOwnedSkills(IReadOnlyList<MenteeOwnedSkillChoice> choices)
+    {
         var byId = choices.ToDictionary(choice => choice.SkillId);
 
-        Sync(ownedSkills, ids, skill => skill.SkillId, skillId => new MenteeOwnedSkill(UserId, byId[skillId]));
+        Sync(ownedSkills, byId.Keys.ToArray(), skill => skill.SkillId, skillId => new MenteeOwnedSkill(UserId, byId[skillId]));
         foreach (var skill in ownedSkills)
         {
             skill.SkillLevelId = byId[skill.SkillId].SkillLevelId;
@@ -103,15 +119,13 @@ public sealed class MenteeProfile
     {
         ArgumentNullException.ThrowIfNull(answers);
 
-        SkillLevelId = answers.SkillLevelId;
         FormatId = answers.FormatId;
         AvailabilityId = answers.AvailabilityId;
         BudgetFrom = answers.BudgetFrom;
         BudgetTo = answers.BudgetTo;
-        Goal = answers.Goal;
-        GoalDeadlineId = answers.GoalDeadlineId;
 
         Sync(skills, answers.SkillIds, skill => skill.SkillId, skillId => new MenteeSkill(UserId, skillId));
+        SyncOwnedSkills(answers.OwnedSkills);
         Sync(tasks, answers.TaskIds, task => task.TaskId, taskId => new MenteeTask(UserId, taskId));
     }
 

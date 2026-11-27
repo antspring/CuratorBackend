@@ -9,17 +9,8 @@ public interface IMenteeProfileStore
 {
     Task<MenteeProfileSnapshot?> FindAsync(Guid userId, CancellationToken cancellationToken);
 
-    Task<bool> UpdatePersonalAsync(
-        SaveMenteePersonalCommand command, StoredFile? photo, DateTimeOffset now, CancellationToken cancellationToken);
-
-    Task<bool> ReplaceOwnedSkillsAsync(
-        Guid userId, IReadOnlyList<MenteeOwnedSkillChoice> choices, DateTimeOffset now, CancellationToken cancellationToken);
-
-    Task<bool> ReplaceGoalsAsync(
-        Guid userId, IReadOnlyList<MenteeGoalChoice> choices, DateTimeOffset now, CancellationToken cancellationToken);
-
-    Task<bool> UpdateAvailabilityAsync(
-        Guid userId, MenteeAvailability availability, DateTimeOffset now, CancellationToken cancellationToken);
+    Task<MenteeProfileSnapshot?> PatchAsync(
+        Guid userId, MenteeProfilePatch patch, StoredFile? photo, DateTimeOffset now, CancellationToken cancellationToken);
 
     Task<SaveProfileOutcome> SaveAsync(
         Guid userId,

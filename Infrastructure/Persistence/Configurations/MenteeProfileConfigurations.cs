@@ -26,10 +26,8 @@ internal sealed class MenteeProfileConfiguration : IEntityTypeConfiguration<Ment
             .HasForeignKey<MenteeProfile>(profile => profile.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        builder.HasOne<CatalogItem>().WithMany().HasForeignKey(profile => profile.SkillLevelId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<CatalogItem>().WithMany().HasForeignKey(profile => profile.FormatId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<CatalogItem>().WithMany().HasForeignKey(profile => profile.AvailabilityId).OnDelete(DeleteBehavior.Restrict);
-        builder.HasOne<CatalogItem>().WithMany().HasForeignKey(profile => profile.GoalDeadlineId).OnDelete(DeleteBehavior.Restrict);
 
         builder.OwnsOne(profile => profile.Availability, availability =>
         {

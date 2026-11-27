@@ -113,14 +113,13 @@ public class MentorProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var mentee = new MenteeProfileInput(
             ProfileTestData.Personal(catalogs),
             [catalogs[CatalogKinds.Skills][0]],
-            catalogs[CatalogKinds.SkillLevels][0],
+            [new(catalogs[CatalogKinds.Skills][0], catalogs[CatalogKinds.SkillLevels][0])],
             [catalogs[CatalogKinds.MenteeTasks][0]],
             catalogs[CatalogKinds.Formats][0],
             catalogs[CatalogKinds.Availability][0],
             null,
             null,
-            "Освоить ASP.NET Core и собрать учебный API",
-            catalogs[CatalogKinds.GoalDeadlines][0]);
+            [new(null, "Освоить ASP.NET Core и собрать учебный API", catalogs[CatalogKinds.GoalDeadlines][0], [])]);
         (await client.PutAsJsonAsync("/api/v1/me/mentee-profile", mentee)).EnsureSuccessStatusCode();
 
         var response = await client.PutAsJsonAsync(Path, await ValidProfileAsync());
@@ -139,14 +138,13 @@ public class MentorProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var response = await client.PutAsJsonAsync("/api/v1/me/mentee-profile", new MenteeProfileInput(
             ProfileTestData.Personal(catalogs),
             [catalogs[CatalogKinds.Skills][0]],
-            catalogs[CatalogKinds.SkillLevels][0],
+            [new(catalogs[CatalogKinds.Skills][0], catalogs[CatalogKinds.SkillLevels][0])],
             [catalogs[CatalogKinds.MenteeTasks][0]],
             catalogs[CatalogKinds.Formats][0],
             catalogs[CatalogKinds.Availability][0],
             null,
             null,
-            "Освоить ASP.NET Core и собрать учебный API",
-            catalogs[CatalogKinds.GoalDeadlines][0]));
+            [new(null, "Освоить ASP.NET Core и собрать учебный API", catalogs[CatalogKinds.GoalDeadlines][0], [])]));
 
         Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
     }

@@ -9,6 +9,7 @@ public class MenteeProfileTests
     private static readonly Guid SkillA = Guid.NewGuid();
     private static readonly Guid SkillB = Guid.NewGuid();
     private static readonly Guid SkillC = Guid.NewGuid();
+    private static readonly Guid BasicLevel = Guid.NewGuid();
     private static readonly Guid Task = Guid.NewGuid();
     private const string Goal = "Освоить ASP.NET Core и собрать учебный API";
 
@@ -18,18 +19,20 @@ public class MenteeProfileTests
         decimal? budgetFrom = null,
         decimal? budgetTo = null,
         string goal = Goal) =>
-        new(skillIds ?? [SkillA], Guid.NewGuid(), taskIds ?? [Task], Guid.NewGuid(), Guid.NewGuid(), budgetFrom, budgetTo, goal, Guid.NewGuid());
+        new(skillIds ?? [SkillA], [new(SkillC, BasicLevel)], taskIds ?? [Task], Guid.NewGuid(), Guid.NewGuid(), budgetFrom, budgetTo, [new(null, goal, Guid.NewGuid(), [])]);
 
     [Fact]
     public void Constructor_StoresAnswersAndCollections()
     {
         var profile = new MenteeProfile(UserId, Answers([SkillA, SkillB], budgetFrom: 1000m, budgetTo: 2000.50m, goal: $"  {Goal}  "));
 
-        Assert.Equal(Goal, profile.Goal);
+        Assert.Equal(Goal, Assert.Single(profile.Goals).Text);
         Assert.Equal(1000m, profile.BudgetFrom);
         Assert.Equal(2000.50m, profile.BudgetTo);
         Assert.Equal([SkillA, SkillB], profile.Skills.Select(skill => skill.SkillId));
         Assert.All(profile.Skills, skill => Assert.Equal(UserId, skill.MenteeId));
+        var owned = Assert.Single(profile.OwnedSkills);
+        Assert.Equal((SkillC, BasicLevel), (owned.SkillId, owned.SkillLevelId));
         Assert.Equal([Task], profile.Tasks.Select(task => task.TaskId));
     }
 
@@ -78,9 +81,9 @@ public class MenteeProfileTests
     [InlineData("                         ")]
     public void Answers_RejectShortGoal(string goal)
     {
-        var exception = Assert.Throws<DomainException>(() => Answers(goal: goal));
+        var exception = Assert.Throws<DomainException>(() => new MenteeProfile(UserId, Answers(goal: goal)));
 
-        Assert.Equal(nameof(MenteeAnswers.Goal), exception.Field);
+        Assert.Equal("Goals[0].Text", exception.Field);
     }
 
     [Fact]

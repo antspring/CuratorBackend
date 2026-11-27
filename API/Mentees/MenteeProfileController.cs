@@ -22,56 +22,17 @@ public sealed class MenteeProfileController(MenteeProfileService menteeProfileSe
             : Ok(MenteeProfileResponse.From(profile));
     }
 
-    [HttpPut("personal")]
-    [ProducesResponseType<MenteePersonalResponse>(StatusCodes.Status200OK)]
+    [HttpPatch]
+    [ProducesResponseType<MenteeProfileResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<MenteePersonalResponse>> PutPersonal(MenteePersonalRequest request, CancellationToken cancellationToken)
+    public async Task<ActionResult<MenteeProfileResponse>> Patch(MenteeProfilePatchRequest request, CancellationToken cancellationToken)
     {
-        var profile = await menteeProfileService.UpdatePersonalAsync(request.ToCommand(User.GetUserId()), cancellationToken);
+        var profile = await menteeProfileService.PatchAsync(User.GetUserId(), request.ToPatch(), cancellationToken);
         return profile is null
             ? this.ProblemWithCode(StatusCodes.Status404NotFound, ErrorCodes.ResourceNotFound, "Анкета менти ещё не сохранена.")
-            : Ok(MenteePersonalResponse.From(profile));
-    }
-
-    [HttpPut("skills")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> PutSkills(MenteeOwnedSkillsRequest request, CancellationToken cancellationToken)
-    {
-        var updated = await menteeProfileService.ReplaceOwnedSkillsAsync(User.GetUserId(), request.ToChoices(), cancellationToken);
-        return updated
-            ? NoContent()
-            : this.ProblemWithCode(StatusCodes.Status404NotFound, ErrorCodes.ResourceNotFound, "Анкета менти ещё не сохранена.");
-    }
-
-    [HttpPut("goals")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> PutGoals(MenteeGoalsRequest request, CancellationToken cancellationToken)
-    {
-        var updated = await menteeProfileService.ReplaceGoalsAsync(User.GetUserId(), request.ToChoices(), cancellationToken);
-        return updated
-            ? NoContent()
-            : this.ProblemWithCode(StatusCodes.Status404NotFound, ErrorCodes.ResourceNotFound, "Анкета менти ещё не сохранена.");
-    }
-
-    [HttpPut("availability")]
-    [ProducesResponseType(StatusCodes.Status204NoContent)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status400BadRequest)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status401Unauthorized)]
-    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> PutAvailability(MenteeAvailabilityRequest request, CancellationToken cancellationToken)
-    {
-        var updated = await menteeProfileService.UpdateAvailabilityAsync(User.GetUserId(), request.ToAvailability(), cancellationToken);
-        return updated
-            ? NoContent()
-            : this.ProblemWithCode(StatusCodes.Status404NotFound, ErrorCodes.ResourceNotFound, "Анкета менти ещё не сохранена.");
+            : Ok(MenteeProfileResponse.From(profile));
     }
 
     [HttpPut]

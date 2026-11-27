@@ -10,18 +10,17 @@ namespace IntegrationTests.Mentees;
 public sealed record MenteeProfileInput(
     PersonalInput Personal,
     Guid[] SkillIds,
-    Guid SkillLevelId,
+    OwnedSkillDto?[] OwnedSkills,
     Guid[] TaskIds,
     Guid FormatId,
     Guid AvailabilityId,
     string? BudgetFrom,
     string? BudgetTo,
-    string Goal,
-    Guid GoalDeadlineId);
+    ProfileGoalDto[] Goals);
 
 public sealed record OwnedSkillDto(Guid SkillId, Guid SkillLevelId);
 
-public sealed record ProfileGoalDto(Guid Id, string Text, Guid DeadlineId, Guid[] DirectionIds);
+public sealed record ProfileGoalDto(Guid? Id, string Text, Guid DeadlineId, Guid[] DirectionIds);
 
 public sealed record ProfileLookupDto(Guid Id, string Name);
 
@@ -44,11 +43,9 @@ public sealed record MenteeProfileDto(
     MenteePersonalDto Personal,
     MenteeOwnedSkillDto[] OwnedSkills,
     ProfileLookupDto[] Skills,
-    ProfileLookupDto SkillLevel,
     ProfileLookupDto[] Tasks,
     string? BudgetFrom,
     string? BudgetTo,
-    string Goal,
     MenteeGoalDto[] Goals,
     DateTimeOffset UpdatedAt);
 
@@ -109,10 +106,11 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Null(saved.Personal.PhotoFileId);
         Assert.Null(saved.Personal.PhotoUrl);
         Assert.Equal(input.SkillIds.Order(), saved.Skills.Select(skill => skill.Id));
+        Assert.Equal(input.OwnedSkills, saved.OwnedSkills.Select(skill => skill.ToInput()));
         Assert.Equal(input.TaskIds.Order(), saved.Tasks.Select(task => task.Id));
         Assert.Equal("1500.00", saved.BudgetFrom);
         Assert.Equal("3000.50", saved.BudgetTo);
-        Assert.Equal(input.Goal, saved.Goal);
+        Assert.Equal(Assert.Single(input.Goals).Text, Assert.Single(saved.Goals).Text);
 
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         Assert.EndsWith("Z", json.RootElement.GetProperty("updatedAt").GetString());
@@ -251,17 +249,17 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var response = await client.PutAsJsonAsync(Path, valid with
         {
             Personal = valid.Personal with { LastName = null! },
-            Goal = "Коротко",
+            Goals = [valid.Goals[0] with { Text = "Коротко" }],
         });
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var problem = await response.ReadAsync<ProblemDto>();
         Assert.Contains("personal.lastName", problem.Errors!.Keys);
-        Assert.Contains("goal", problem.Errors.Keys);
+        Assert.Contains("goals[0].text", problem.Errors.Keys);
     }
 
     [Fact]
-    public async Task PutPersonal_PreservesQuestionnaireAndSurvivesQuestionnaireUpdates()
+    public async Task PatchPersonal_PreservesQuestionnaireAndSurvivesQuestionnaireUpdates()
     {
         var (client, _) = await factory.SignedInClientAsync();
         var input = await ValidProfileAsync();
@@ -272,9 +270,9 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
 
         var photoId = await ProfileTestData.UploadAvatarAsync(client);
         var details = PersonalDetails(input) with { PhotoFileId = photoId };
-        var update = await client.PutAsJsonAsync($"{Path}/personal", details);
+        var update = await client.PatchAsJsonAsync(Path, new { personal = details });
         update.EnsureSuccessStatusCode();
-        var saved = await update.ReadAsync<JsonElement>();
+        var saved = (await update.ReadAsync<JsonElement>()).GetProperty("personal");
         Assert.Equal("Мария", saved.GetProperty("firstName").GetString());
         Assert.Equal(photoId, saved.GetProperty("photoFileId").GetGuid());
         Assert.NotNull(saved.GetProperty("photoUrl").GetString());
@@ -282,7 +280,7 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal("Студентка", saved.GetProperty("status").GetString());
 
         var after = await client.GetFromJsonAsync<MenteeProfileDto>(Path);
-        Assert.Equal(input.Goal, after!.Goal);
+        Assert.Equal(Assert.Single(input.Goals).Text, Assert.Single(after!.Goals).Text);
         Assert.Equal(input.SkillIds.Order(), after.Skills.Select(skill => skill.Id).Order());
         Assert.Equal(input.BudgetTo, after.BudgetTo);
 
@@ -295,30 +293,29 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(details.Specialty, personal.GetProperty("specialty").GetString());
         Assert.Equal(details.AboutMe, personal.GetProperty("aboutMe").GetString());
 
-        var cleared = await client.PutAsJsonAsync($"{Path}/personal", details with { Specialty = null, AboutMe = null });
+        var cleared = await client.PatchAsJsonAsync(Path, new { personal = details with { Specialty = null, AboutMe = null } });
         cleared.EnsureSuccessStatusCode();
-        var clearedJson = await cleared.ReadAsync<JsonElement>();
+        var clearedJson = (await cleared.ReadAsync<JsonElement>()).GetProperty("personal");
         Assert.Equal(JsonValueKind.Null, clearedJson.GetProperty("specialty").ValueKind);
         Assert.Equal(JsonValueKind.Null, clearedJson.GetProperty("aboutMe").ValueKind);
     }
 
     [Fact]
-    public async Task PutPersonal_RequiresAuthenticationAndAnExistingMenteeProfile()
+    public async Task Patch_RequiresAuthenticationAndAnExistingMenteeProfile()
     {
         var input = PersonalDetails(await ValidProfileAsync());
-        var path = $"{Path}/personal";
-        var anonymous = await factory.CreateClient().PutAsJsonAsync(path, input);
+        var anonymous = await factory.CreateClient().PatchAsJsonAsync(Path, new { personal = input });
         Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
 
         var (client, tokens) = await factory.SignedInClientAsync();
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync(path, input)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PatchAsJsonAsync(Path, new { personal = input })).StatusCode);
         Assert.Empty((await (await client.RefreshAsync(tokens.RefreshToken)).ReadAsync<TokenPairDto>()).Account.Roles);
         await factory.AddRoleAsync(tokens.Account.Id, Roles.Mentor);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync(path, input)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.PatchAsJsonAsync(Path, new { personal = input })).StatusCode);
     }
 
     [Fact]
-    public async Task PutPersonal_InvalidFieldsAndForeignAvatarLeaveProfileIntact()
+    public async Task PatchPersonal_InvalidFieldsAndForeignAvatarLeaveProfileIntact()
     {
         var (client, _) = await factory.SignedInClientAsync();
         var input = await ValidProfileAsync();
@@ -326,103 +323,84 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var details = PersonalDetails(input);
         var (other, _) = await factory.SignedInClientAsync();
         var foreignPhoto = await ProfileTestData.UploadAvatarAsync(other);
-        var path = $"{Path}/personal";
 
-        await ProfileTestData.AssertFieldErrorAsync(await client.PutAsJsonAsync(path, details with { PhotoFileId = foreignPhoto }), "photoFileId");
-        await ProfileTestData.AssertFieldErrorAsync(await client.PutAsJsonAsync(path, details with { CityId = input.SkillLevelId }), "cityId");
-        var invalid = await client.PutAsJsonAsync(path, details with { Status = " ", University = "", AboutMe = new string('а', 301) });
+        await ProfileTestData.AssertFieldErrorAsync(await client.PatchAsJsonAsync(Path, new { personal = details with { PhotoFileId = foreignPhoto } }), "personal.photoFileId");
+        await ProfileTestData.AssertFieldErrorAsync(await client.PatchAsJsonAsync(Path, new { personal = details with { CityId = input.FormatId } }), "personal.cityId");
+        var invalid = await client.PatchAsJsonAsync(Path, new { personal = details with { Status = " ", University = "", AboutMe = new string('а', 301) } });
         Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
         var errors = (await invalid.ReadAsync<ProblemDto>()).Errors!;
-        Assert.Contains("status", errors.Keys);
-        Assert.Contains("university", errors.Keys);
-        Assert.Contains("aboutMe", errors.Keys);
+        Assert.Contains("personal.status", errors.Keys);
+        Assert.Contains("personal.university", errors.Keys);
+        Assert.Contains("personal.aboutMe", errors.Keys);
         var personal = (await client.GetFromJsonAsync<JsonElement>(Path)).GetProperty("personal");
         Assert.Equal(input.Personal.FirstName, personal.GetProperty("firstName").GetString());
         Assert.Equal(JsonValueKind.Null, personal.GetProperty("status").ValueKind);
     }
 
     [Fact]
-    public async Task PutSkills_ReplacesOwnSkillsAndPreservesQuestionnaire()
+    public async Task Put_ReplacesOwnedSkillsIndependentlyFromDesiredMentorSkills()
     {
         var (client, _) = await factory.SignedInClientAsync();
         var input = await ValidProfileAsync();
-        var initial = await client.PutAsJsonAsync(Path, input);
-        initial.EnsureSuccessStatusCode();
-        Assert.Empty((await initial.ReadAsync<MenteeProfileDto>()).OwnedSkills);
-
         var catalogs = await factory.CatalogsAsync();
         var skills = catalogs[CatalogKinds.Skills];
         var levels = catalogs[CatalogKinds.SkillLevels];
         var first = new OwnedSkillDto(skills[0], levels[0]);
         var second = new OwnedSkillDto(skills[2], levels[1]);
-        var updated = first with { SkillLevelId = levels[2] };
-        var skillsPath = $"{Path}/skills";
 
-        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync(skillsPath, new { ownedSkills = new[] { first, second } })).StatusCode);
-        var saved = await client.GetFromJsonAsync<MenteeProfileDto>(Path);
-        Assert.Equal(new[] { first, second }.OrderBy(skill => skill.SkillId), saved!.OwnedSkills.Select(skill => skill.ToInput()));
+        var initial = await client.PutAsJsonAsync(Path, input with { OwnedSkills = [first, second] });
+        initial.EnsureSuccessStatusCode();
+        var saved = await initial.ReadAsync<MenteeProfileDto>();
+        Assert.Equal(new[] { first, second }.OrderBy(skill => skill.SkillId), saved.OwnedSkills.Select(skill => skill.ToInput()));
         Assert.Equal(input.SkillIds.Order(), saved.Skills.Select(skill => skill.Id));
-        Assert.Equal(input.SkillLevelId, saved.SkillLevel.Id);
 
         var details = PersonalDetails(input);
-        (await client.PutAsJsonAsync($"{Path}/personal", details)).EnsureSuccessStatusCode();
-        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync(skillsPath, new { ownedSkills = new[] { updated } })).StatusCode);
-        var replaced = await client.GetFromJsonAsync<MenteeProfileDto>(Path);
-        Assert.Equal(updated, Assert.Single(replaced!.OwnedSkills).ToInput());
+        (await client.PatchAsJsonAsync(Path, new { personal = details })).EnsureSuccessStatusCode();
+        var afterPersonal = (await client.GetFromJsonAsync<MenteeProfileDto>(Path))!;
+        Assert.Equal(saved.OwnedSkills, afterPersonal.OwnedSkills);
+
+        var updated = first with { SkillLevelId = levels[2] };
+        var replaced = await client.PutAsJsonAsync(Path, input with { SkillIds = [skills[1]], OwnedSkills = [updated] });
+        replaced.EnsureSuccessStatusCode();
+        var profile = await replaced.ReadAsync<MenteeProfileDto>();
+        Assert.Equal(skills[1], Assert.Single(profile.Skills).Id);
+        Assert.Equal(updated, Assert.Single(profile.OwnedSkills).ToInput());
         var personal = (await client.GetFromJsonAsync<JsonElement>(Path)).GetProperty("personal");
         Assert.Equal(details.University, personal.GetProperty("university").GetString());
-
-        var questionnaire = await client.PutAsJsonAsync(Path, input with { SkillIds = [skills[1]] });
-        questionnaire.EnsureSuccessStatusCode();
-        var afterQuestionnaire = await questionnaire.ReadAsync<MenteeProfileDto>();
-        Assert.Equal(new[] { skills[1] }, afterQuestionnaire.Skills.Select(skill => skill.Id));
-        Assert.Equal(updated, Assert.Single(afterQuestionnaire.OwnedSkills).ToInput());
-
-        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync(skillsPath, new { ownedSkills = Array.Empty<OwnedSkillDto>() })).StatusCode);
-        var cleared = await client.GetFromJsonAsync<MenteeProfileDto>(Path);
-        Assert.Empty(cleared!.OwnedSkills);
-        Assert.Equal(afterQuestionnaire.Skills.Select(skill => skill.Id), cleared.Skills.Select(skill => skill.Id));
     }
 
     [Fact]
-    public async Task PutSkills_InvalidEntriesDoNotChangeSavedSkills()
+    public async Task Put_InvalidOwnedSkillsDoNotChangeProfile()
     {
         var (client, _) = await factory.SignedInClientAsync();
         var input = await ValidProfileAsync();
         (await client.PutAsJsonAsync(Path, input)).EnsureSuccessStatusCode();
-        var skill = new OwnedSkillDto(input.SkillIds[0], input.SkillLevelId);
-        var skillsPath = $"{Path}/skills";
-        (await client.PutAsJsonAsync(skillsPath, new { ownedSkills = new[] { skill } })).EnsureSuccessStatusCode();
-
+        var skill = Assert.Single(input.OwnedSkills)!;
         var wrongLevel = skill with { SkillLevelId = input.FormatId };
-        var wrongSkill = skill with { SkillId = input.SkillLevelId };
-        OwnedSkillDto?[][] invalidLists = [[skill, skill], [wrongLevel], [wrongSkill], [null]];
-        foreach (var invalid in invalidLists)
+        var wrongSkill = skill with { SkillId = skill.SkillLevelId };
+
+        (OwnedSkillDto?[] Choices, string Field)[] invalid =
+        [
+            ([], "ownedSkills"),
+            ([skill, skill], "ownedSkills"),
+            ([wrongLevel], "ownedSkills"),
+            ([wrongSkill], "ownedSkills"),
+            ([null], "ownedSkills[0]"),
+        ];
+
+        foreach (var (choices, field) in invalid)
         {
-            var response = await client.PutAsJsonAsync(skillsPath, new { ownedSkills = invalid });
-            await ProfileTestData.AssertFieldErrorAsync(response, "ownedSkills");
+            var response = await client.PutAsJsonAsync(Path, input with { OwnedSkills = choices, BudgetTo = "9999.00" });
+            await ProfileTestData.AssertFieldErrorAsync(response, field);
         }
 
-        var saved = await client.GetFromJsonAsync<MenteeProfileDto>(Path);
-        Assert.Equal(skill, Assert.Single(saved!.OwnedSkills).ToInput());
+        var saved = (await client.GetFromJsonAsync<MenteeProfileDto>(Path))!;
+        Assert.Equal(skill, Assert.Single(saved.OwnedSkills).ToInput());
+        Assert.Equal(input.BudgetTo, saved.BudgetTo);
     }
 
     [Fact]
-    public async Task PutSkills_RequiresAuthenticationAndAnExistingMenteeProfile()
-    {
-        var skillsPath = $"{Path}/skills";
-        var body = new { ownedSkills = Array.Empty<OwnedSkillDto>() };
-        var anonymous = await factory.CreateClient().PutAsJsonAsync(skillsPath, body);
-        Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
-
-        var (client, _) = await factory.SignedInClientAsync();
-        var missing = await client.PutAsJsonAsync(skillsPath, body);
-        Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
-        Assert.Equal("resource_not_found", (await missing.ReadAsync<ProblemDto>()).Code);
-    }
-
-    [Fact]
-    public async Task PutGoals_SeedsQuestionnaireGoalOnceAndPreservesEditedList()
+    public async Task PatchGoals_SeedsQuestionnaireGoalOnceAndPreservesEditedList()
     {
         var (client, _) = await factory.SignedInClientAsync();
         var input = await ValidProfileAsync();
@@ -430,11 +408,11 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         saved.EnsureSuccessStatusCode();
         var imported = Assert.Single((await saved.ReadAsync<MenteeProfileDto>()).Goals).ToInput();
         Assert.NotEqual(Guid.Empty, imported.Id);
-        Assert.Equal(input.Goal, imported.Text);
-        Assert.Equal(input.GoalDeadlineId, imported.DeadlineId);
+        Assert.Equal(Assert.Single(input.Goals).Text, imported.Text);
+        Assert.Equal(Assert.Single(input.Goals).DeadlineId, imported.DeadlineId);
         Assert.Empty(imported.DirectionIds);
 
-        var revisedInput = input with { Goal = "Другая цель из повторно заполненной анкеты" };
+        var revisedInput = input with { Goals = [input.Goals[0] with { Text = "Другая цель из повторно заполненной анкеты" }] };
         var questionnaire = await client.PutAsJsonAsync(Path, revisedInput);
         questionnaire.EnsureSuccessStatusCode();
         var unchanged = Assert.Single((await questionnaire.ReadAsync<MenteeProfileDto>()).Goals);
@@ -443,71 +421,69 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
 
         var catalogs = await factory.CatalogsAsync();
         var direction = catalogs[CatalogKinds.MentoringDirections][0];
-        var newGoal = new ProfileGoalDto(Guid.NewGuid(), "Подготовить проект для собеседования",
-            catalogs[CatalogKinds.GoalDeadlines][1], [direction]);
-        var goalsPath = $"{Path}/goals";
-        var initialList = new[] { imported, newGoal };
-        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync(goalsPath, new { goals = initialList })).StatusCode);
+        var newGoal = new { text = "Подготовить проект для собеседования",
+            deadlineId = catalogs[CatalogKinds.GoalDeadlines][1], directionIds = new[] { direction } };
+        var initialList = new { goals = new object[] { imported, newGoal } };
+        var creation = await client.PatchAsJsonAsync(Path, initialList);
+        Assert.Equal(HttpStatusCode.OK, creation.StatusCode);
+        var created = (await creation.ReadAsync<MenteeProfileDto>()).Goals[1];
+        Assert.NotEqual(Guid.Empty, created.Id);
+        Assert.NotEqual(imported.Id, created.Id);
+
+        var retry = await client.PatchAsJsonAsync(Path, initialList);
+        retry.EnsureSuccessStatusCode();
+        var retried = (await retry.ReadAsync<MenteeProfileDto>()).Goals;
+        Assert.Equal(new[] { imported.Id!.Value, created.Id }, retried.Select(goal => goal.Id));
 
         var edited = imported with { Text = "Улучшить навыки серверной разработки", DirectionIds = [direction] };
-        var choices = new[] { newGoal, edited };
-        for (var retry = 0; retry < 2; retry++)
-        {
-            Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync(goalsPath, new { goals = choices })).StatusCode);
-        }
+        var choices = new[] { created.ToInput(), edited };
+        var update = await client.PatchAsJsonAsync(Path, new { goals = choices });
+        update.EnsureSuccessStatusCode();
+        Assert.Equal(choices.Select(goal => goal.Id!.Value), (await update.ReadAsync<MenteeProfileDto>()).Goals.Select(goal => goal.Id));
 
         var profile = await client.GetFromJsonAsync<MenteeProfileDto>(Path);
-        Assert.Equal(choices.Select(goal => (goal.Id, goal.Text, goal.DeadlineId)),
+        Assert.Equal(choices.Select(goal => (goal.Id!.Value, goal.Text, goal.DeadlineId)),
             profile!.Goals.Select(goal => (goal.Id, goal.Text, goal.Deadline.Id)));
         Assert.All(profile.Goals, goal => Assert.Equal(direction, Assert.Single(goal.Directions).Id));
-        Assert.Equal(revisedInput.Goal, profile.Goal);
         Assert.Equal(input.SkillIds.Order(), profile.Skills.Select(skill => skill.Id));
 
-        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync(goalsPath, new { goals = Array.Empty<ProfileGoalDto>() })).StatusCode);
+        var clear = await client.PatchAsJsonAsync(Path, new { goals = Array.Empty<ProfileGoalDto>() });
+        clear.EnsureSuccessStatusCode();
+        Assert.Empty((await clear.ReadAsync<MenteeProfileDto>()).Goals);
         var repeated = await client.PutAsJsonAsync(Path, revisedInput);
         repeated.EnsureSuccessStatusCode();
         Assert.Empty((await repeated.ReadAsync<MenteeProfileDto>()).Goals);
     }
 
     [Fact]
-    public async Task PutGoals_InvalidDirectionsAndDuplicateIdsLeaveSavedListIntact()
+    public async Task PatchGoals_InvalidDirectionsAndDuplicateIdsLeaveSavedListIntact()
     {
         var (client, _) = await factory.SignedInClientAsync();
         var input = await ValidProfileAsync();
         var saved = await client.PutAsJsonAsync(Path, input);
         saved.EnsureSuccessStatusCode();
         var original = Assert.Single((await saved.ReadAsync<MenteeProfileDto>()).Goals).ToInput();
-        var goalsPath = $"{Path}/goals";
 
         var wrongDirection = original with { DirectionIds = [input.TaskIds[0]] };
-        var missingDirections = original with { Id = Guid.NewGuid() };
+        var missingDirections = original with { Id = null, Text = "Новая цель без указанного направления" };
         var wrongDeadline = original with { DeadlineId = input.FormatId };
         await ProfileTestData.AssertFieldErrorAsync(
-            await client.PutAsJsonAsync(goalsPath, new { goals = new[] { wrongDirection } }), "goals[0].directionIds");
+            await client.PatchAsJsonAsync(Path, new { goals = new[] { wrongDirection } }), "goals[0].directionIds");
         await ProfileTestData.AssertFieldErrorAsync(
-            await client.PutAsJsonAsync(goalsPath, new { goals = new[] { missingDirections } }), "goals[0].directionIds");
+            await client.PatchAsJsonAsync(Path, new { goals = new[] { missingDirections } }), "goals[0].directionIds");
         await ProfileTestData.AssertFieldErrorAsync(
-            await client.PutAsJsonAsync(goalsPath, new { goals = new[] { wrongDeadline } }), "goals[0].deadlineId");
+            await client.PatchAsJsonAsync(Path, new { goals = new[] { wrongDeadline } }), "goals[0].deadlineId");
         await ProfileTestData.AssertFieldErrorAsync(
-            await client.PutAsJsonAsync(goalsPath, new { goals = new[] { original, original } }), "goals");
+            await client.PatchAsJsonAsync(Path, new { goals = new[] { original, original } }), "goals");
+        await ProfileTestData.AssertFieldErrorAsync(
+            await client.PatchAsJsonAsync(Path, new { goals = new[] { original with { Id = Guid.NewGuid() } } }), "goals[0].id");
 
         var profile = await client.GetFromJsonAsync<MenteeProfileDto>(Path);
         Assert.Equal(original.Id, Assert.Single(profile!.Goals).Id);
     }
 
     [Fact]
-    public async Task PutGoals_RequiresAuthenticationAndAnExistingMenteeProfile()
-    {
-        var goalsPath = $"{Path}/goals";
-        var body = new { goals = Array.Empty<ProfileGoalDto>() };
-        Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateClient().PutAsJsonAsync(goalsPath, body)).StatusCode);
-
-        var (client, _) = await factory.SignedInClientAsync();
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync(goalsPath, body)).StatusCode);
-    }
-
-    [Fact]
-    public async Task PutAvailability_SavesAndReplacesScheduleIndependentlyOfQuestionnaire()
+    public async Task PatchAvailability_SavesAndReplacesScheduleIndependentlyOfQuestionnaire()
     {
         var (client, _) = await factory.SignedInClientAsync();
         var input = await ValidProfileAsync();
@@ -519,8 +495,7 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var catalogs = await factory.CatalogsAsync();
         var city = catalogs[CatalogKinds.Cities].First(id => id != input.Personal.CityId);
         var both = ValidSchedule() with { Formats = ["offline", "online"], MeetingCityId = city };
-        var path = $"{Path}/availability";
-        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync(path, both)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PatchAsJsonAsync(Path, new { availability = both })).StatusCode);
 
         var profile = await client.GetFromJsonAsync<JsonElement>(Path);
         var schedule = profile.GetProperty("availability").Deserialize<ScheduleDto>(JsonSerializerOptions.Web)!;
@@ -535,7 +510,7 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Single(profile.GetProperty("goals").EnumerateArray());
 
         var updated = ValidSchedule() with { Days = ["tuesday"], TimeZoneId = "UTC", StartTime = "09:30", EndTime = "12:00" };
-        Assert.Equal(HttpStatusCode.NoContent, (await client.PutAsJsonAsync(path, updated)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PatchAsJsonAsync(Path, new { availability = updated })).StatusCode);
 
         var newHours = catalogs[CatalogKinds.Availability].First(id => id != input.AvailabilityId);
         var repeated = await client.PutAsJsonAsync(Path, input with { AvailabilityId = newHours });
@@ -550,7 +525,7 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task PutAvailability_ValidatesScheduleAndMeetingCity()
+    public async Task PatchAvailability_ValidatesScheduleAndMeetingCity()
     {
         var (client, _) = await factory.SignedInClientAsync();
         var input = await ValidProfileAsync();
@@ -572,22 +547,12 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
 
         foreach (var (body, field) in invalid)
         {
-            var response = await client.PutAsJsonAsync($"{Path}/availability", body);
-            await ProfileTestData.AssertFieldErrorAsync(response, field);
+            var response = await client.PatchAsJsonAsync(Path, new { availability = body });
+            await ProfileTestData.AssertFieldErrorAsync(response, $"availability.{field}");
         }
 
         var profile = await client.GetFromJsonAsync<JsonElement>(Path);
         Assert.Equal(JsonValueKind.Null, profile.GetProperty("availability").ValueKind);
-    }
-
-    [Fact]
-    public async Task PutAvailability_RequiresAuthenticationAndAnExistingMenteeProfile()
-    {
-        var path = $"{Path}/availability";
-        var body = ValidSchedule();
-        Assert.Equal(HttpStatusCode.Unauthorized, (await factory.CreateClient().PutAsJsonAsync(path, body)).StatusCode);
-        var (client, _) = await factory.SignedInClientAsync();
-        Assert.Equal(HttpStatusCode.NotFound, (await client.PutAsJsonAsync(path, body)).StatusCode);
     }
 
     [Fact]
@@ -596,6 +561,8 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var (client, _) = await factory.SignedInClientAsync();
         var template = await ValidProfileAsync();
         var python = await CatalogIdAsync(client, CatalogKinds.Skills, "Python");
+        var levelId = await CatalogIdAsync(client, CatalogKinds.SkillLevels, "Уверенный");
+        var ownedSkill = new OwnedSkillDto(python, levelId);
         var input = template with
         {
             Personal = template.Personal with
@@ -604,11 +571,11 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
                 LanguageId = await CatalogIdAsync(client, CatalogKinds.Languages, "Русский"),
             },
             SkillIds = [python, await CatalogIdAsync(client, CatalogKinds.Skills, "SQL")],
-            SkillLevelId = await CatalogIdAsync(client, CatalogKinds.SkillLevels, "Базовый"),
+            OwnedSkills = [ownedSkill],
             TaskIds = [await CatalogIdAsync(client, CatalogKinds.MenteeTasks, "Освоить новый навык")],
             FormatId = await CatalogIdAsync(client, CatalogKinds.Formats, "Онлайн"),
             AvailabilityId = await CatalogIdAsync(client, CatalogKinds.Availability, "1–2 часа в неделю"),
-            GoalDeadlineId = await CatalogIdAsync(client, CatalogKinds.GoalDeadlines, "1 месяц"),
+            Goals = [template.Goals[0] with { DeadlineId = await CatalogIdAsync(client, CatalogKinds.GoalDeadlines, "1 месяц") }],
         };
         var questionnaire = await client.PutAsJsonAsync(Path, input);
         questionnaire.EnsureSuccessStatusCode();
@@ -617,19 +584,18 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(JsonValueKind.Null, initial.GetProperty("availability").ValueKind);
 
         var cityId = await CatalogIdAsync(client, CatalogKinds.Cities, "Екатеринбург");
-        var levelId = await CatalogIdAsync(client, CatalogKinds.SkillLevels, "Уверенный");
-        var ownedSkill = new OwnedSkillDto(python, levelId);
         var directionId = await CatalogIdAsync(client, CatalogKinds.MentoringDirections, "Карьерный рост");
-        var goal = new ProfileGoalDto(Guid.NewGuid(), "Подготовить проект для собеседования",
+        var goal = new ProfileGoalDto(null, "Подготовить проект для собеседования",
             await CatalogIdAsync(client, CatalogKinds.GoalDeadlines, "3 месяца"), [directionId]);
         var availability = ValidSchedule() with { Formats = ["offline"], MeetingCityId = cityId };
-        (await client.PutAsJsonAsync($"{Path}/skills", new { ownedSkills = new[] { ownedSkill } })).EnsureSuccessStatusCode();
-        (await client.PutAsJsonAsync($"{Path}/goals", new { goals = new[] { goal } })).EnsureSuccessStatusCode();
-        (await client.PutAsJsonAsync($"{Path}/availability", availability)).EnsureSuccessStatusCode();
+        var goalUpdate = await client.PatchAsJsonAsync(Path, new { goals = new[] { goal } });
+        goalUpdate.EnsureSuccessStatusCode();
+        var goalId = Assert.Single((await goalUpdate.ReadAsync<MenteeProfileDto>()).Goals).Id;
+        (await client.PatchAsJsonAsync(Path, new { availability })).EnsureSuccessStatusCode();
 
-        var personalUpdate = await client.PutAsJsonAsync($"{Path}/personal", PersonalDetails(input));
+        var personalUpdate = await client.PatchAsJsonAsync(Path, new { personal = PersonalDetails(input) });
         personalUpdate.EnsureSuccessStatusCode();
-        var personal = await personalUpdate.ReadAsync<JsonElement>();
+        var personal = (await personalUpdate.ReadAsync<JsonElement>()).GetProperty("personal");
         AssertLookup(personal.GetProperty("city"), input.Personal.CityId, "Москва");
         AssertLookup(personal.GetProperty("language"), input.Personal.LanguageId, "Русский");
 
@@ -637,11 +603,10 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         AssertLookup(profile.GetProperty("personal").GetProperty("city"), input.Personal.CityId, "Москва");
         Assert.Equal(input.SkillIds.Order(),
             profile.GetProperty("skills").EnumerateArray().Select(skill => skill.GetProperty("id").GetGuid()));
-        AssertLookup(profile.GetProperty("skillLevel"), input.SkillLevelId, "Базовый");
         AssertLookup(Assert.Single(profile.GetProperty("tasks").EnumerateArray()), input.TaskIds[0], "Освоить новый навык");
         AssertLookup(profile.GetProperty("format"), input.FormatId, "Онлайн");
         AssertLookup(profile.GetProperty("weeklyAvailability"), input.AvailabilityId, "1–2 часа в неделю");
-        AssertLookup(profile.GetProperty("goalDeadline"), input.GoalDeadlineId, "1 месяц");
+        AssertLookup(Assert.Single(initial.GetProperty("goals").EnumerateArray()).GetProperty("deadline"), Assert.Single(input.Goals).DeadlineId, "1 месяц");
 
         var skill = Assert.Single(profile.GetProperty("ownedSkills").EnumerateArray());
         AssertLookup(skill.GetProperty("skill"), ownedSkill.SkillId, "Python");
@@ -652,7 +617,47 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var schedule = profile.GetProperty("availability");
         AssertLookup(schedule.GetProperty("meetingCity"), cityId, "Екатеринбург");
 
-        Assert.Equal(goal.Id, savedGoal.GetProperty("id").GetGuid());
+        Assert.Equal(goalId, savedGoal.GetProperty("id").GetGuid());
+    }
+
+    [Fact]
+    public async Task Patch_SavesMultipleSectionsAndRejectsInvalidUpdatesAtomically()
+    {
+        var (client, _) = await factory.SignedInClientAsync();
+        var input = await ValidProfileAsync();
+        var created = await client.PutAsJsonAsync(Path, input);
+        created.EnsureSuccessStatusCode();
+        var goal = Assert.Single((await created.ReadAsync<MenteeProfileDto>()).Goals);
+        var personal = PersonalDetails(input);
+        var availability = ValidSchedule();
+
+        var invalid = await client.PatchAsJsonAsync(Path, new
+        {
+            personal,
+            ownedSkills = Array.Empty<OwnedSkillDto>(),
+            goals = new[] { goal.ToInput() with { Id = Guid.NewGuid() } },
+            availability,
+        });
+        await ProfileTestData.AssertFieldErrorAsync(invalid, "goals[0].id");
+        var unchanged = await client.GetFromJsonAsync<JsonElement>(Path);
+        Assert.Equal(input.Personal.FirstName, unchanged.GetProperty("personal").GetProperty("firstName").GetString());
+        Assert.Single(unchanged.GetProperty("ownedSkills").EnumerateArray());
+        Assert.Equal(JsonValueKind.Null, unchanged.GetProperty("availability").ValueKind);
+
+        var updated = await client.PatchAsJsonAsync(Path, new
+        {
+            personal,
+            ownedSkills = Array.Empty<OwnedSkillDto>(),
+            goals = Array.Empty<ProfileGoalDto>(),
+            availability,
+        });
+        updated.EnsureSuccessStatusCode();
+        var saved = await updated.ReadAsync<JsonElement>();
+        Assert.Equal(personal.FirstName, saved.GetProperty("personal").GetProperty("firstName").GetString());
+        Assert.Empty(saved.GetProperty("ownedSkills").EnumerateArray());
+        Assert.Empty(saved.GetProperty("goals").EnumerateArray());
+        Assert.Equal(availability.StartTime, saved.GetProperty("availability").GetProperty("startTime").GetString());
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PatchAsJsonAsync(Path, new { })).StatusCode);
     }
 
     private static async Task<Guid> CatalogIdAsync(HttpClient client, string kind, string name)
@@ -690,13 +695,12 @@ public class MenteeProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         return new MenteeProfileInput(
             ProfileTestData.Personal(catalogs),
             [catalogs[CatalogKinds.Skills][0], catalogs[CatalogKinds.Skills][1]],
-            catalogs[CatalogKinds.SkillLevels][0],
+            [new(catalogs[CatalogKinds.Skills][2], catalogs[CatalogKinds.SkillLevels][0])],
             [catalogs[CatalogKinds.MenteeTasks][0]],
             catalogs[CatalogKinds.Formats][0],
             catalogs[CatalogKinds.Availability][0],
             null,
             "2000.00",
-            "Освоить ASP.NET Core и собрать учебный API",
-            catalogs[CatalogKinds.GoalDeadlines][0]);
+            [new(null, "Освоить ASP.NET Core и собрать учебный API", catalogs[CatalogKinds.GoalDeadlines][0], [])]);
     }
 }
