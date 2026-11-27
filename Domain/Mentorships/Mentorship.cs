@@ -20,6 +20,10 @@ public sealed class Mentorship
 {
     public const int EndReasonMaxLength = 4000;
 
+    private Mentorship()
+    {
+    }
+
     public Mentorship(Guid requestId, Guid menteeId, Guid mentorId, int durationMonths, DateTimeOffset startsAt)
     {
         RequestId = Require.Id(requestId, nameof(RequestId));
@@ -31,30 +35,25 @@ public sealed class Mentorship
             throw new DomainException(nameof(MentorId), "Участниками пары должны быть разные пользователи.");
         }
 
-        if (durationMonths is not (1 or 3 or 6))
-        {
-            throw new DomainException(nameof(DurationMonths), "Выберите длительность 1, 3 или 6 месяцев.");
-        }
-
         Id = Guid.CreateVersion7();
         StartsAt = startsAt.ToUniversalTime();
-        DurationMonths = durationMonths;
+        DurationMonths = RequireDurationMonths(durationMonths);
         PlannedEndsAt = StartsAt.AddMonths(DurationMonths);
     }
 
-    public Guid Id { get; }
+    public Guid Id { get; private set; }
 
-    public Guid RequestId { get; }
+    public Guid RequestId { get; private set; }
 
-    public Guid MenteeId { get; }
+    public Guid MenteeId { get; private set; }
 
-    public Guid MentorId { get; }
+    public Guid MentorId { get; private set; }
 
-    public DateTimeOffset StartsAt { get; }
+    public DateTimeOffset StartsAt { get; private set; }
 
-    public int DurationMonths { get; }
+    public int DurationMonths { get; private set; }
 
-    public DateTimeOffset PlannedEndsAt { get; }
+    public DateTimeOffset PlannedEndsAt { get; private set; }
 
     public MentorshipStatus Status { get; private set; } = MentorshipStatus.Active;
 
@@ -68,6 +67,10 @@ public sealed class Mentorship
 
     public bool TryTerminate(DateTimeOffset now, MentorshipEndReasonCode reasonCode, string? reason) =>
         Close(MentorshipStatus.Terminated, now, reasonCode, reason);
+
+    internal static int RequireDurationMonths(int durationMonths) => durationMonths is 1 or 3 or 6
+        ? durationMonths
+        : throw new DomainException(nameof(DurationMonths), "Выберите длительность 1, 3 или 6 месяцев.");
 
     private bool Close(MentorshipStatus status, DateTimeOffset now, MentorshipEndReasonCode? reasonCode, string? reason)
     {

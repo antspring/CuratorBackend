@@ -3,6 +3,7 @@ using Application.Catalogs;
 using Application.Files;
 using Application.Mentees;
 using Application.Mentors;
+using Application.Mentorships;
 using Application.Profiles;
 using Application.Sessions;
 using Microsoft.Extensions.DependencyInjection;
@@ -23,6 +24,7 @@ public static class DependencyInjection
         services.AddScoped<MenteeProfileService>();
         services.AddScoped<MentorProfileService>();
         services.AddScoped<MentorCardService>();
+        services.AddScoped<MentorshipService>();
 
         return services;
     }

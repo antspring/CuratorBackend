@@ -538,6 +538,125 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("mentor_workplaces", (string)null);
                 });
 
+            modelBuilder.Entity("Domain.Mentorships.Mentorship", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<short>("DurationMonths")
+                        .HasColumnType("smallint")
+                        .HasColumnName("duration_months");
+
+                    b.Property<string>("EndReason")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("end_reason");
+
+                    b.Property<string>("EndReasonCode")
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("end_reason_code");
+
+                    b.Property<DateTimeOffset?>("EndedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("ended_at");
+
+                    b.Property<Guid>("MenteeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mentee_id");
+
+                    b.Property<Guid>("MentorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mentor_id");
+
+                    b.Property<DateTimeOffset>("PlannedEndsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("planned_ends_at");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("request_id");
+
+                    b.Property<DateTimeOffset>("StartsAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("starts_at");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_mentorships");
+
+                    b.HasIndex("RequestId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_mentorships_request_id");
+
+                    b.HasIndex("MenteeId", "MentorId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_mentorships_mentee_id_mentor_id")
+                        .HasFilter("status = 'active'");
+
+                    b.ToTable("mentorships", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Mentorships.MentorshipRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<DateTimeOffset?>("DecidedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_at");
+
+                    b.Property<short>("DurationMonths")
+                        .HasColumnType("smallint")
+                        .HasColumnName("duration_months");
+
+                    b.Property<Guid>("MenteeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mentee_id");
+
+                    b.Property<Guid>("MentorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("mentor_id");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("message");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(16)
+                        .HasColumnType("character varying(16)")
+                        .HasColumnName("status");
+
+                    b.HasKey("Id")
+                        .HasName("pk_mentorship_requests");
+
+                    b.HasIndex("MenteeId", "MentorId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_mentorship_requests_mentee_id_mentor_id")
+                        .HasFilter("status = 'pending'");
+
+                    b.HasIndex("MenteeId", "CreatedAt", "Id")
+                        .HasDatabaseName("ix_mentorship_requests_mentee_id_created_at_id");
+
+                    b.HasIndex("MentorId", "CreatedAt", "Id")
+                        .HasDatabaseName("ix_mentorship_requests_mentor_id_created_at_id");
+
+                    b.ToTable("mentorship_requests", (string)null);
+                });
+
             modelBuilder.Entity("Domain.Users.UserProfile", b =>
                 {
                     b.Property<Guid>("UserId")
@@ -1271,6 +1390,33 @@ namespace Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_mentor_workplaces_mentor_profiles_mentor_id");
+                });
+
+            modelBuilder.Entity("Domain.Mentorships.Mentorship", b =>
+                {
+                    b.HasOne("Domain.Mentorships.MentorshipRequest", null)
+                        .WithOne()
+                        .HasForeignKey("Domain.Mentorships.Mentorship", "RequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentorships_mentorship_requests_request_id");
+                });
+
+            modelBuilder.Entity("Domain.Mentorships.MentorshipRequest", b =>
+                {
+                    b.HasOne("Domain.Mentees.MenteeProfile", null)
+                        .WithMany()
+                        .HasForeignKey("MenteeId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentorship_requests_mentee_profiles_mentee_id");
+
+                    b.HasOne("Domain.Mentors.MentorProfile", null)
+                        .WithMany()
+                        .HasForeignKey("MentorId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_mentorship_requests_mentor_profiles_mentor_id");
                 });
 
             modelBuilder.Entity("Domain.Users.UserProfile", b =>
