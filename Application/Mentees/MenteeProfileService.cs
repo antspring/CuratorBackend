@@ -60,10 +60,7 @@ public sealed class MenteeProfileService(
             references.AddRange(GoalReferences(goals));
         }
 
-        if (patch.Availability?.MeetingCityId is { } cityId)
-        {
-            references.Add(new("Availability.MeetingCityId", CatalogKinds.Cities, [cityId]));
-        }
+        references.AddRange(ProfileInputValidator.AvailabilityReferences(patch.Availability));
 
         await validator.EnsureCatalogReferencesAsync(references, cancellationToken);
         var photo = await validator.FindPhotoAsync(userId, patch.Personal?.PhotoFileId, "Personal.PhotoFileId", cancellationToken);

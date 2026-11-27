@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using API.Profiles;
 using Application.Mentees;
 using Domain.Mentees;
 
@@ -14,7 +15,7 @@ public sealed class MenteeProfilePatchRequest : IValidatableObject
     [MaxLength(MenteeProfile.MaxGoals)]
     public MenteeGoalRequest?[]? Goals { get; init; }
 
-    public MenteeAvailabilityRequest? Availability { get; init; }
+    public ProfileAvailabilityRequest? Availability { get; init; }
 
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {

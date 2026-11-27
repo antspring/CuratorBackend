@@ -19,6 +19,14 @@ public sealed class ProfileInputValidator(ICatalogLookup catalogs, IFileMetadata
         new($"{PersonalField}.{nameof(PersonalInput.LanguageId)}", CatalogKinds.Languages, [personal.LanguageId]),
     ];
 
+    public static IEnumerable<CatalogReference> AvailabilityReferences(ProfileAvailability? availability)
+    {
+        if (availability?.MeetingCityId is { } cityId)
+        {
+            yield return new($"Availability.{nameof(ProfileAvailability.MeetingCityId)}", CatalogKinds.Cities, [cityId]);
+        }
+    }
+
     public async Task<PersonalData> BuildPersonalAsync(Guid userId, PersonalInput input, CancellationToken cancellationToken)
     {
         var photo = await FindPhotoAsync(userId, input.PhotoFileId, $"{PersonalField}.{nameof(input.PhotoFileId)}", cancellationToken);

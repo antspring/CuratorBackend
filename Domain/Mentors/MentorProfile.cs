@@ -1,4 +1,5 @@
 using Domain.Common;
+using Domain.Users;
 
 namespace Domain.Mentors;
 
@@ -44,6 +45,10 @@ public sealed class MentorProfile
     public IReadOnlyCollection<MentorDirection> Directions => directions;
 
     public IReadOnlyCollection<MentorWorkplace> Workplaces => workplaces;
+
+    public ProfileAvailability? Availability { get; private set; }
+
+    public void UpdateAvailability(ProfileAvailability availability) => Availability = availability;
 
     public void ReplaceWorkplaces(IReadOnlyList<MentorWorkplaceInput> choices, int currentYear)
     {

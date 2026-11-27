@@ -1,6 +1,6 @@
 using Domain.Common;
 
-namespace Domain.Mentees;
+namespace Domain.Users;
 
 public enum MeetingFormat
 {
@@ -8,15 +8,15 @@ public enum MeetingFormat
     Offline,
 }
 
-public sealed class MenteeAvailability
+public sealed class ProfileAvailability
 {
     public const int TimeZoneIdMaxLength = 100;
 
-    private MenteeAvailability()
+    private ProfileAvailability()
     {
     }
 
-    public MenteeAvailability(
+    public ProfileAvailability(
         IReadOnlyList<DayOfWeek> days,
         TimeOnly startTime,
         TimeOnly endTime,

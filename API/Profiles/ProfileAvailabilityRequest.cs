@@ -1,11 +1,11 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using Domain.Common;
-using Domain.Mentees;
+using Domain.Users;
 
-namespace API.Mentees;
+namespace API.Profiles;
 
-public sealed class MenteeAvailabilityRequest
+public sealed class ProfileAvailabilityRequest
 {
     private const string TimeFormat = "HH:mm";
     private const string TimePattern = "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$";
@@ -19,7 +19,7 @@ public sealed class MenteeAvailabilityRequest
     [Required, RegularExpression(TimePattern)]
     public string EndTime { get; init; } = null!;
 
-    [Required, MaxLength(MenteeAvailability.TimeZoneIdMaxLength)]
+    [Required, MaxLength(ProfileAvailability.TimeZoneIdMaxLength)]
     public string TimeZoneId { get; init; } = null!;
 
     [Required, MinLength(1), MaxLength(2)]
@@ -27,7 +27,7 @@ public sealed class MenteeAvailabilityRequest
 
     public Guid? MeetingCityId { get; init; }
 
-    public MenteeAvailability ToAvailability()
+    public ProfileAvailability ToAvailability()
     {
         try
         {

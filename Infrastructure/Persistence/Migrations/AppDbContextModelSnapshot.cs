@@ -1182,7 +1182,7 @@ namespace Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_mentee_profiles_users_user_id");
 
-                    b.OwnsOne("Domain.Mentees.MenteeAvailability", "Availability", b1 =>
+                    b.OwnsOne("Domain.Users.ProfileAvailability", "Availability", b1 =>
                         {
                             b1.Property<Guid>("MenteeId")
                                 .HasColumnType("uuid")
@@ -1356,6 +1356,61 @@ namespace Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired()
                         .HasConstraintName("fk_mentor_profiles_users_user_id");
+
+                    b.OwnsOne("Domain.Users.ProfileAvailability", "Availability", b1 =>
+                        {
+                            b1.Property<Guid>("MentorId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("mentor_id");
+
+                            b1.PrimitiveCollection<int[]>("Days")
+                                .IsRequired()
+                                .HasColumnType("integer[]")
+                                .HasColumnName("days");
+
+                            b1.Property<TimeOnly>("EndTime")
+                                .HasColumnType("time without time zone")
+                                .HasColumnName("end_time");
+
+                            b1.PrimitiveCollection<int[]>("Formats")
+                                .IsRequired()
+                                .HasColumnType("integer[]")
+                                .HasColumnName("formats");
+
+                            b1.Property<Guid?>("MeetingCityId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("meeting_city_id");
+
+                            b1.Property<TimeOnly>("StartTime")
+                                .HasColumnType("time without time zone")
+                                .HasColumnName("start_time");
+
+                            b1.Property<string>("TimeZoneId")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("time_zone_id");
+
+                            b1.HasKey("MentorId")
+                                .HasName("pk_mentor_availability");
+
+                            b1.HasIndex("MeetingCityId")
+                                .HasDatabaseName("ix_mentor_availability_meeting_city_id");
+
+                            b1.ToTable("mentor_availability", (string)null);
+
+                            b1.HasOne("Domain.Catalogs.City", null)
+                                .WithMany()
+                                .HasForeignKey("MeetingCityId")
+                                .OnDelete(DeleteBehavior.Restrict)
+                                .HasConstraintName("fk_mentor_availability_cities_meeting_city_id");
+
+                            b1.WithOwner()
+                                .HasForeignKey("MentorId")
+                                .HasConstraintName("fk_mentor_availability_mentor_profiles_mentor_id");
+                        });
+
+                    b.Navigation("Availability");
                 });
 
             modelBuilder.Entity("Domain.Mentors.MentorSkill", b =>
