@@ -27,7 +27,7 @@ internal sealed class MentorProfileStore(AppDbContext db, PersonalProfileStore p
     }
 
     public async Task<MentorProfileSnapshot?> PatchAsync(
-        Guid userId, IReadOnlyList<MentorWorkplaceInput> workplaces, DateTimeOffset now, CancellationToken cancellationToken)
+        Guid userId, MentorProfilePatch patch, DateTimeOffset now, CancellationToken cancellationToken)
     {
         await using var transaction = Transaction.Current is null
             ? await db.Database.BeginTransactionAsync(cancellationToken)
@@ -44,7 +44,16 @@ internal sealed class MentorProfileStore(AppDbContext db, PersonalProfileStore p
             return null;
         }
 
-        mentor.ReplaceWorkplaces(workplaces, now.Year);
+        if (patch.Workplaces is { } workplaces)
+        {
+            mentor.ReplaceWorkplaces(workplaces, now.Year);
+        }
+
+        if (patch.Skills is { } skills)
+        {
+            mentor.ReplaceSkills(skills);
+        }
+
         var personal = await db.UserProfiles.SingleAsync(profile => profile.UserId == userId, cancellationToken);
         personal.MarkUpdated(now);
         await db.SaveChangesAsync(cancellationToken);
@@ -78,7 +87,7 @@ internal sealed class MentorProfileStore(AppDbContext db, PersonalProfileStore p
         }
 
         var mentor = await db.MentorProfiles
-            .Include(existing => existing.Skills)
+            .Include(existing => existing.OwnedSkills)
             .Include(existing => existing.Directions)
             .AsSplitQuery()
             .SingleOrDefaultAsync(existing => existing.UserId == userId, cancellationToken);
@@ -104,6 +113,7 @@ internal sealed class MentorProfileStore(AppDbContext db, PersonalProfileStore p
 
     private static IQueryable<MentorProfile> WithDetails(IQueryable<MentorProfile> profiles) =>
         profiles
+            .Include(profile => profile.OwnedSkills)
             .Include(profile => profile.Skills)
             .Include(profile => profile.Directions)
             .Include(profile => profile.Workplaces)

@@ -13,7 +13,7 @@ public sealed record MentorProfileInput(
     PersonalInput Personal,
     Guid PositionId,
     Guid ExperienceId,
-    MentorSkillInput[] Skills,
+    MentorSkillInput[] OwnedSkills,
     Guid[] DirectionIds,
     Guid FormatId,
     Guid AvailabilityId,
@@ -28,6 +28,7 @@ public sealed record MentorProfileDto(
     PersonalDto Personal,
     Guid PositionId,
     Guid ExperienceId,
+    MentorSkillInput[] OwnedSkills,
     MentorSkillInput[] Skills,
     Guid[] DirectionIds,
     Guid FormatId,
@@ -63,7 +64,8 @@ public class MentorProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         var saved = await response.ReadAsync<MentorProfileDto>();
         Assert.Equal(tokens.Account.Id, saved.UserId);
-        Assert.Equal(input.Skills.OrderBy(skill => skill.SkillId), saved.Skills);
+        Assert.Equal(input.OwnedSkills.OrderBy(skill => skill.SkillId), saved.OwnedSkills);
+        Assert.Empty(saved.Skills);
         Assert.Equal(input.DirectionIds.Order(), saved.DirectionIds);
         Assert.Equal(input.PositionId, saved.PositionId);
         Assert.Equal(input.PricingModelId, saved.PricingModelId);
@@ -74,7 +76,7 @@ public class MentorProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(["mentor"], (await refreshed.ReadAsync<TokenPairDto>()).Account.Roles);
 
         var fetched = await (await client.GetAsync(Path)).ReadAsync<MentorProfileDto>();
-        Assert.Equal(saved.Skills, fetched.Skills);
+        Assert.Equal(saved.OwnedSkills, fetched.OwnedSkills);
     }
 
     [Fact]
@@ -88,7 +90,7 @@ public class MentorProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var expert = catalogs[CatalogKinds.SkillLevels][3];
         var second = first with
         {
-            Skills = [first.Skills[1] with { SkillLevelId = expert }, new(catalogs[CatalogKinds.Skills][5], expert)],
+            OwnedSkills = [first.OwnedSkills[1] with { SkillLevelId = expert }, new(catalogs[CatalogKinds.Skills][5], expert)],
             DirectionIds = [catalogs[CatalogKinds.MentoringDirections][2]],
             Price = "0.00",
             HasFreeTrial = false,
@@ -97,7 +99,7 @@ public class MentorProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         (await client.PutAsJsonAsync(Path, second)).EnsureSuccessStatusCode();
 
         var fetched = await (await client.GetAsync(Path)).ReadAsync<MentorProfileDto>();
-        Assert.Equal(second.Skills.OrderBy(skill => skill.SkillId), fetched.Skills);
+        Assert.Equal(second.OwnedSkills.OrderBy(skill => skill.SkillId), fetched.OwnedSkills);
         Assert.Equal(second.DirectionIds, fetched.DirectionIds);
         Assert.Equal("0.00", fetched.Price);
         Assert.False(fetched.HasFreeTrial);
@@ -162,11 +164,11 @@ public class MentorProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
     [InlineData("skillId")]
     [InlineData("skillLevelId")]
     [InlineData("duplicate")]
-    public async Task Put_InvalidSkills_ReturnsSkillsError(string problem)
+    public async Task Put_InvalidOwnedSkills_ReturnsOwnedSkillsError(string problem)
     {
         var (client, _) = await factory.SignedInClientAsync();
         var valid = await ValidProfileAsync();
-        var skill = valid.Skills[0];
+        var skill = valid.OwnedSkills[0];
 
         MentorSkillInput[] skills = problem switch
         {
@@ -175,9 +177,9 @@ public class MentorProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
             _ => [skill, skill],
         };
 
-        var response = await client.PutAsJsonAsync(Path, valid with { Skills = skills });
+        var response = await client.PutAsJsonAsync(Path, valid with { OwnedSkills = skills });
 
-        await ProfileTestData.AssertFieldErrorAsync(response, "skills");
+        await ProfileTestData.AssertFieldErrorAsync(response, "ownedSkills");
     }
 
     [Theory]
@@ -233,7 +235,7 @@ public class MentorProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var savedProfile = await saved.ReadAsync<MentorProfileDto>();
         Assert.Equal(input.PositionId, savedProfile.PositionId);
         Assert.Equal(input.ExperienceId, savedProfile.ExperienceId);
-        Assert.Equal(input.Skills.OrderBy(skill => skill.SkillId), savedProfile.Skills);
+        Assert.Equal(input.OwnedSkills.OrderBy(skill => skill.SkillId), savedProfile.OwnedSkills);
         var workplaces = savedProfile.Workplaces;
         Assert.Equal(new[] { current.Company, past.Company }, workplaces.Select(workplace => workplace.Company));
         Assert.All(workplaces, workplace => Assert.NotEqual(Guid.Empty, workplace.Id));
@@ -252,7 +254,7 @@ public class MentorProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(new[] { workplaces[1], savedById }, profile!.Workplaces);
         Assert.Equal(input.PositionId, profile.PositionId);
         Assert.Equal(input.ExperienceId, profile.ExperienceId);
-        Assert.Equal(input.Skills.OrderBy(skill => skill.SkillId), profile.Skills);
+        Assert.Equal(input.OwnedSkills.OrderBy(skill => skill.SkillId), profile.OwnedSkills);
 
         var replacement = await client.PatchAsJsonAsync(Path, new { workplaces = new[] { savedById } });
         replacement.EnsureSuccessStatusCode();
@@ -311,6 +313,74 @@ public class MentorProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var missing = await client.PatchAsJsonAsync(Path, body);
         Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
         Assert.Equal("resource_not_found", (await missing.ReadAsync<ProblemDto>()).Code);
+    }
+
+    [Fact]
+    public async Task PatchSkills_ReplacesExpectedSkillsIndependentlyOfOwnedSkillsAndWorkplaces()
+    {
+        var (client, _) = await factory.SignedInClientAsync();
+        var questionnaire = await ValidProfileAsync();
+        (await client.PutAsJsonAsync(Path, questionnaire)).EnsureSuccessStatusCode();
+        var catalogs = await factory.CatalogsAsync();
+        var levels = catalogs[CatalogKinds.SkillLevels];
+        MentorSkillInput[] expectedSkills =
+        [
+            questionnaire.OwnedSkills[0] with { SkillLevelId = levels[0] },
+            new(catalogs[CatalogKinds.Skills][2], levels[1]),
+        ];
+        var workplace = new { company = "Команда", title = "Инженер", startYear = 2021, isCurrent = true };
+
+        var combined = await client.PatchAsJsonAsync(Path, new { skills = expectedSkills, workplaces = new[] { workplace } });
+        combined.EnsureSuccessStatusCode();
+        var saved = await combined.ReadAsync<MentorProfileDto>();
+        Assert.Equal(expectedSkills.OrderBy(skill => skill.SkillId), saved.Skills);
+        Assert.Equal(questionnaire.OwnedSkills.OrderBy(skill => skill.SkillId), saved.OwnedSkills);
+        var savedWorkplace = Assert.Single(saved.Workplaces);
+
+        var updatedSkill = expectedSkills[0] with { SkillLevelId = levels[1] };
+        var patch = await client.PatchAsJsonAsync(Path, new { skills = new[] { updatedSkill } });
+        patch.EnsureSuccessStatusCode();
+        var fetched = await client.GetFromJsonAsync<MentorProfileDto>(Path);
+        Assert.Equal(updatedSkill, Assert.Single(fetched!.Skills));
+        Assert.Equal(saved.OwnedSkills, fetched.OwnedSkills);
+        Assert.Equal(savedWorkplace, Assert.Single(fetched.Workplaces));
+
+        var repeated = await client.PutAsJsonAsync(Path, questionnaire with { Price = "2000.00" });
+        repeated.EnsureSuccessStatusCode();
+        Assert.Equal(updatedSkill, Assert.Single((await repeated.ReadAsync<MentorProfileDto>()).Skills));
+
+        var cleared = await client.PatchAsJsonAsync(Path, new { skills = Array.Empty<MentorSkillInput>() });
+        cleared.EnsureSuccessStatusCode();
+        var afterClear = await client.GetFromJsonAsync<MentorProfileDto>(Path);
+        Assert.Empty(afterClear!.Skills);
+        Assert.Equal(saved.OwnedSkills, afterClear.OwnedSkills);
+        Assert.Equal(savedWorkplace, Assert.Single(afterClear.Workplaces));
+    }
+
+    [Theory]
+    [InlineData("skillId")]
+    [InlineData("skillLevelId")]
+    [InlineData("duplicate")]
+    public async Task PatchSkills_InvalidSkills_DoNotSaveEitherSection(string problem)
+    {
+        var (client, _) = await factory.SignedInClientAsync();
+        var questionnaire = await ValidProfileAsync();
+        (await client.PutAsJsonAsync(Path, questionnaire)).EnsureSuccessStatusCode();
+        var skill = questionnaire.OwnedSkills[0];
+        MentorSkillInput[] skills = problem switch
+        {
+            "skillId" => [skill with { SkillId = questionnaire.FormatId }],
+            "skillLevelId" => [skill with { SkillLevelId = questionnaire.FormatId }],
+            _ => [skill, skill],
+        };
+        var workplace = new { company = "Команда", title = "Инженер", startYear = 2021, isCurrent = true };
+
+        var response = await client.PatchAsJsonAsync(Path, new { skills, workplaces = new[] { workplace } });
+
+        await ProfileTestData.AssertFieldErrorAsync(response, "skills");
+        var profile = await client.GetFromJsonAsync<MentorProfileDto>(Path);
+        Assert.Empty(profile!.Skills);
+        Assert.Empty(profile.Workplaces);
     }
 
     private async Task<MentorProfileInput> ValidProfileAsync()

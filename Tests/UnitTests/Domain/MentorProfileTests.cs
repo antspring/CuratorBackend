@@ -32,8 +32,8 @@ public class MentorProfileTests
 
         Assert.Equal(0m, profile.Price);
         Assert.True(profile.HasFreeTrial);
-        Assert.Equal([(SkillA, Basic), (SkillB, Expert)], profile.Skills.Select(skill => (skill.SkillId, skill.SkillLevelId)));
-        Assert.All(profile.Skills, skill => Assert.Equal(UserId, skill.MentorId));
+        Assert.Equal([(SkillA, Basic), (SkillB, Expert)], profile.OwnedSkills.Select(skill => (skill.SkillId, skill.SkillLevelId)));
+        Assert.All(profile.OwnedSkills, skill => Assert.Equal(UserId, skill.MentorId));
         Assert.Equal([Direction], profile.Directions.Select(direction => direction.DirectionId));
     }
 
@@ -41,12 +41,12 @@ public class MentorProfileTests
     public void Update_ChangesLevelInPlaceAndReplacesOtherSkills()
     {
         var profile = new MentorProfile(UserId, Answers([new(SkillA, Basic), new(SkillB, Basic)]));
-        var keptSkill = profile.Skills.Single(skill => skill.SkillId == SkillB);
+        var keptSkill = profile.OwnedSkills.Single(skill => skill.SkillId == SkillB);
 
         profile.Update(Answers([new(SkillB, Expert), new(SkillC, Basic)]));
 
-        Assert.Equal([(SkillB, Expert), (SkillC, Basic)], profile.Skills.Select(skill => (skill.SkillId, skill.SkillLevelId)));
-        Assert.Same(keptSkill, profile.Skills.First());
+        Assert.Equal([(SkillB, Expert), (SkillC, Basic)], profile.OwnedSkills.Select(skill => (skill.SkillId, skill.SkillLevelId)));
+        Assert.Same(keptSkill, profile.OwnedSkills.First());
     }
 
     [Fact]
@@ -54,7 +54,7 @@ public class MentorProfileTests
     {
         var exception = Assert.Throws<DomainException>(() => Answers([new(SkillA, Basic), new(SkillA, Expert)]));
 
-        Assert.Equal(nameof(MentorAnswers.Skills), exception.Field);
+        Assert.Equal(nameof(MentorAnswers.OwnedSkills), exception.Field);
     }
 
     [Fact]
@@ -62,7 +62,7 @@ public class MentorProfileTests
     {
         var exception = Assert.Throws<DomainException>(() => Answers([new(SkillA, Guid.Empty)]));
 
-        Assert.Equal(nameof(MentorAnswers.Skills), exception.Field);
+        Assert.Equal(nameof(MentorAnswers.OwnedSkills), exception.Field);
     }
 
     [Fact]

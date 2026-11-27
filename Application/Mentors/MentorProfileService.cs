@@ -19,9 +19,14 @@ public sealed class MentorProfileService(
     }
 
     public async Task<MentorProfileView?> PatchAsync(
-        Guid userId, IReadOnlyList<MentorWorkplaceInput> workplaces, CancellationToken cancellationToken)
+        Guid userId, MentorProfilePatch patch, CancellationToken cancellationToken)
     {
-        var snapshot = await store.PatchAsync(userId, workplaces, timeProvider.GetUtcNow(), cancellationToken);
+        if (patch.Skills is { Count: > 0 } skills)
+        {
+            await validator.EnsureCatalogReferencesAsync(SkillReferences(nameof(patch.Skills), skills), cancellationToken);
+        }
+
+        var snapshot = await store.PatchAsync(userId, patch, timeProvider.GetUtcNow(), cancellationToken);
         return snapshot is null ? null : ToView(snapshot);
     }
 
@@ -30,7 +35,7 @@ public sealed class MentorProfileService(
         var answers = new MentorAnswers(
             command.PositionId,
             command.ExperienceId,
-            command.Skills,
+            command.OwnedSkills,
             command.DirectionIds,
             command.FormatId,
             command.AvailabilityId,
@@ -45,8 +50,7 @@ public sealed class MentorProfileService(
             .. ProfileInputValidator.PersonalReferences(command.Personal),
             new(nameof(command.PositionId), CatalogKinds.Positions, [command.PositionId]),
             new(nameof(command.ExperienceId), CatalogKinds.Experience, [command.ExperienceId]),
-            new(nameof(command.Skills), CatalogKinds.Skills, command.Skills.Select(skill => skill.SkillId).ToList()),
-            new(nameof(command.Skills), CatalogKinds.SkillLevels, command.Skills.Select(skill => skill.SkillLevelId).ToList()),
+            .. SkillReferences(nameof(command.OwnedSkills), answers.OwnedSkills),
             new(nameof(command.DirectionIds), CatalogKinds.MentoringDirections, command.DirectionIds),
             new(nameof(command.FormatId), CatalogKinds.Formats, [command.FormatId]),
             new(nameof(command.AvailabilityId), CatalogKinds.Availability, [command.AvailabilityId]),
@@ -67,6 +71,12 @@ public sealed class MentorProfileService(
             _ => throw new InvalidOperationException($"Неизвестный результат сохранения анкеты: {outcome}"),
         };
     }
+
+    private static CatalogReference[] SkillReferences(string field, IReadOnlyList<MentorSkillChoice> skills) =>
+    [
+        new(field, CatalogKinds.Skills, skills.Select(skill => skill.SkillId).ToArray()),
+        new(field, CatalogKinds.SkillLevels, skills.Select(skill => skill.SkillLevelId).ToArray()),
+    ];
 
     private MentorProfileView ToView(MentorProfileSnapshot snapshot) =>
         MentorProfileView.From(

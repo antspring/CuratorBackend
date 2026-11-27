@@ -30,7 +30,7 @@ public sealed class MentorProfileController(MentorProfileService mentorProfileSe
     public async Task<ActionResult<MentorProfileResponse>> Patch(
         MentorProfilePatchRequest request, CancellationToken cancellationToken)
     {
-        var profile = await mentorProfileService.PatchAsync(User.GetUserId(), request.ToChoices(), cancellationToken);
+        var profile = await mentorProfileService.PatchAsync(User.GetUserId(), request.ToPatch(), cancellationToken);
         return profile is null
             ? this.ProblemWithCode(StatusCodes.Status404NotFound, ErrorCodes.ResourceNotFound, "Анкета ментора ещё не сохранена.")
             : Ok(MentorProfileResponse.From(profile));

@@ -32,6 +32,11 @@ internal sealed class MentorProfileConfiguration : IEntityTypeConfiguration<Ment
             .HasForeignKey(workplace => workplace.MentorId)
             .OnDelete(DeleteBehavior.Cascade);
 
+        builder.HasMany(profile => profile.OwnedSkills)
+            .WithOne()
+            .HasForeignKey(skill => skill.MentorId)
+            .OnDelete(DeleteBehavior.Cascade);
+
         builder.HasMany(profile => profile.Skills)
             .WithOne()
             .HasForeignKey(skill => skill.MentorId)
@@ -49,6 +54,18 @@ internal sealed class MentorSkillConfiguration : IEntityTypeConfiguration<Mentor
     public void Configure(EntityTypeBuilder<MentorSkill> builder)
     {
         builder.ToTable("mentor_skills");
+        builder.HasKey(skill => new { skill.MentorId, skill.SkillId });
+
+        builder.HasOne<Skill>().WithMany().HasForeignKey(skill => skill.SkillId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<CatalogItem>().WithMany().HasForeignKey(skill => skill.SkillLevelId).OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
+internal sealed class MentorExpectedSkillConfiguration : IEntityTypeConfiguration<MentorExpectedSkill>
+{
+    public void Configure(EntityTypeBuilder<MentorExpectedSkill> builder)
+    {
+        builder.ToTable("mentor_expected_mentee_skills");
         builder.HasKey(skill => new { skill.MentorId, skill.SkillId });
 
         builder.HasOne<Skill>().WithMany().HasForeignKey(skill => skill.SkillId).OnDelete(DeleteBehavior.Restrict);

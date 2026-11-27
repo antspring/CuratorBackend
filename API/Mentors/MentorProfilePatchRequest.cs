@@ -1,18 +1,30 @@
 using System.ComponentModel.DataAnnotations;
+using Application.Mentors;
 using Domain.Common;
 using Domain.Mentors;
 
 namespace API.Mentors;
 
-public sealed class MentorProfilePatchRequest
+public sealed class MentorProfilePatchRequest : IValidatableObject
 {
-    [Required, MaxLength(MentorProfile.MaxWorkplaces)]
-    public MentorWorkplaceRequest?[] Workplaces { get; init; } = null!;
+    [MaxLength(MentorProfile.MaxWorkplaces)]
+    public MentorWorkplaceRequest?[]? Workplaces { get; init; }
 
-    public MentorWorkplaceInput[] ToChoices() => Workplaces
-        .Select((workplace, index) => workplace?.ToChoice()
-            ?? throw new DomainException($"Workplaces[{index}]", "Заполните данные места работы."))
-        .ToArray();
+    [MaxLength(MentorAnswers.MaxSkills)]
+    public MentorSkillRequest?[]? Skills { get; init; }
+
+    public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
+    {
+        if (Workplaces is null && Skills is null)
+        {
+            yield return new ValidationResult("Укажите хотя бы одну плашку профиля.");
+        }
+    }
+
+    public MentorProfilePatch ToPatch() => new(
+        Workplaces?.Select((workplace, index) => workplace?.ToChoice()
+            ?? throw new DomainException($"Workplaces[{index}]", "Заполните данные места работы.")).ToArray(),
+        Skills is null ? null : MentorSkillRequest.ToChoices(Skills, nameof(Skills)));
 }
 
 public sealed class MentorWorkplaceRequest

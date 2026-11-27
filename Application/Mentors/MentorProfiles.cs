@@ -9,13 +9,17 @@ public sealed record SaveMentorProfileCommand(
     PersonalInput Personal,
     Guid PositionId,
     Guid ExperienceId,
-    IReadOnlyList<MentorSkillChoice> Skills,
+    IReadOnlyList<MentorSkillChoice> OwnedSkills,
     IReadOnlyList<Guid> DirectionIds,
     Guid FormatId,
     Guid AvailabilityId,
     Guid PricingModelId,
     decimal Price,
     bool HasFreeTrial);
+
+public sealed record MentorProfilePatch(
+    IReadOnlyList<MentorWorkplaceInput>? Workplaces,
+    IReadOnlyList<MentorSkillChoice>? Skills);
 
 public sealed record MentorWorkplaceView(
     Guid Id, string Company, string Title, int StartYear, int? EndYear, bool IsCurrent)
@@ -32,6 +36,7 @@ public sealed record MentorProfileView(
     PersonalView Personal,
     Guid PositionId,
     Guid ExperienceId,
+    IReadOnlyList<MentorSkillChoice> OwnedSkills,
     IReadOnlyList<MentorSkillChoice> Skills,
     IReadOnlyList<Guid> DirectionIds,
     Guid FormatId,
@@ -48,7 +53,8 @@ public sealed record MentorProfileView(
             PersonalView.From(personal, photoUrl),
             mentor.PositionId,
             mentor.ExperienceId,
-            mentor.Skills.Select(skill => new MentorSkillChoice(skill.SkillId, skill.SkillLevelId)).OrderBy(skill => skill.SkillId).ToList(),
+            mentor.OwnedSkills.Select(skill => new MentorSkillChoice(skill.SkillId, skill.SkillLevelId)).OrderBy(skill => skill.SkillId).ToArray(),
+            mentor.Skills.Select(skill => new MentorSkillChoice(skill.SkillId, skill.SkillLevelId)).OrderBy(skill => skill.SkillId).ToArray(),
             mentor.Directions.Select(direction => direction.DirectionId).Order().ToList(),
             mentor.FormatId,
             mentor.AvailabilityId,
