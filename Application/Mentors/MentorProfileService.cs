@@ -1,3 +1,4 @@
+using Application.Catalogs;
 using Application.Files;
 using Application.Profiles;
 using Domain.Catalogs;
@@ -8,6 +9,7 @@ namespace Application.Mentors;
 public sealed class MentorProfileService(
     IMentorProfileStore store,
     ProfileInputValidator validator,
+    ICatalogLookup catalogs,
     IFileStorage storage,
     TimeProvider timeProvider)
 {
@@ -15,19 +17,21 @@ public sealed class MentorProfileService(
     {
         var snapshot = await store.FindAsync(userId, cancellationToken);
 
-        return snapshot is null ? null : ToView(snapshot);
+        return snapshot is null ? null : await ToViewAsync(snapshot, cancellationToken);
     }
 
     public async Task<MentorProfileView?> PatchAsync(
         Guid userId, MentorProfilePatch patch, CancellationToken cancellationToken)
     {
+        var references = ProfileInputValidator.AvailabilityReferences(patch.Availability).ToList();
         if (patch.Skills is { Count: > 0 } skills)
         {
-            await validator.EnsureCatalogReferencesAsync(SkillReferences(nameof(patch.Skills), skills), cancellationToken);
+            references.AddRange(SkillReferences(nameof(patch.Skills), skills));
         }
 
+        await validator.EnsureCatalogReferencesAsync(references, cancellationToken);
         var snapshot = await store.PatchAsync(userId, patch, timeProvider.GetUtcNow(), cancellationToken);
-        return snapshot is null ? null : ToView(snapshot);
+        return snapshot is null ? null : await ToViewAsync(snapshot, cancellationToken);
     }
 
     public async Task<SaveMentorProfileResult> SaveAsync(SaveMentorProfileCommand command, CancellationToken cancellationToken)
@@ -78,9 +82,16 @@ public sealed class MentorProfileService(
         new(field, CatalogKinds.SkillLevels, skills.Select(skill => skill.SkillLevelId).ToArray()),
     ];
 
-    private MentorProfileView ToView(MentorProfileSnapshot snapshot) =>
-        MentorProfileView.From(
+    private async Task<MentorProfileView> ToViewAsync(MentorProfileSnapshot snapshot, CancellationToken cancellationToken)
+    {
+        var meetingCity = snapshot.Mentor.Availability?.MeetingCityId is { } cityId
+            ? (await catalogs.FindAsync([cityId], cancellationToken))[cityId]
+            : null;
+
+        return MentorProfileView.From(
             snapshot.Personal,
             snapshot.Mentor,
-            snapshot.PhotoStorageKey is null ? null : storage.GetPublicUrl(snapshot.PhotoStorageKey));
+            snapshot.PhotoStorageKey is null ? null : storage.GetPublicUrl(snapshot.PhotoStorageKey),
+            meetingCity);
+    }
 }

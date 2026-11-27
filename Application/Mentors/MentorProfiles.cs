@@ -1,3 +1,4 @@
+using Application.Catalogs;
 using Application.Profiles;
 using Domain.Mentors;
 using Domain.Users;
@@ -19,7 +20,8 @@ public sealed record SaveMentorProfileCommand(
 
 public sealed record MentorProfilePatch(
     IReadOnlyList<MentorWorkplaceInput>? Workplaces,
-    IReadOnlyList<MentorSkillChoice>? Skills);
+    IReadOnlyList<MentorSkillChoice>? Skills,
+    ProfileAvailability? Availability);
 
 public sealed record MentorWorkplaceView(
     Guid Id, string Company, string Title, int StartYear, int? EndYear, bool IsCurrent)
@@ -41,13 +43,15 @@ public sealed record MentorProfileView(
     IReadOnlyList<Guid> DirectionIds,
     Guid FormatId,
     Guid AvailabilityId,
+    ProfileAvailability? Availability,
+    CatalogRef? MeetingCity,
     Guid PricingModelId,
     decimal Price,
     bool HasFreeTrial,
     IReadOnlyList<MentorWorkplaceView> Workplaces,
     DateTimeOffset UpdatedAt)
 {
-    public static MentorProfileView From(UserProfile personal, MentorProfile mentor, Uri? photoUrl) =>
+    public static MentorProfileView From(UserProfile personal, MentorProfile mentor, Uri? photoUrl, CatalogRef? meetingCity) =>
         new(
             mentor.UserId,
             PersonalView.From(personal, photoUrl),
@@ -58,6 +62,8 @@ public sealed record MentorProfileView(
             mentor.Directions.Select(direction => direction.DirectionId).Order().ToList(),
             mentor.FormatId,
             mentor.AvailabilityId,
+            mentor.Availability,
+            meetingCity,
             mentor.PricingModelId,
             mentor.Price,
             mentor.HasFreeTrial,

@@ -1,4 +1,5 @@
 using Domain.Common;
+using Domain.Users;
 
 namespace Domain.Mentees;
 
@@ -36,7 +37,7 @@ public sealed class MenteeProfile
 
     public Guid AvailabilityId { get; private set; }
 
-    public MenteeAvailability? Availability { get; private set; }
+    public ProfileAvailability? Availability { get; private set; }
 
     public decimal? BudgetFrom { get; private set; }
 
@@ -105,7 +106,7 @@ public sealed class MenteeProfile
         }
     }
 
-    public void UpdateAvailability(MenteeAvailability availability) => Availability = availability;
+    public void UpdateAvailability(ProfileAvailability availability) => Availability = availability;
 
     public void UpdatePersonalDetails(string status, string university, string? specialty, string? aboutMe)
     {

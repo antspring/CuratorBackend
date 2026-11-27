@@ -35,7 +35,7 @@ public sealed record MenteeProfileResponse(
     IReadOnlyList<LookupResponse> Tasks,
     LookupResponse Format,
     LookupResponse WeeklyAvailability,
-    MenteeAvailabilityResponse? Availability,
+    ProfileAvailabilityResponse? Availability,
     string? BudgetFrom,
     string? BudgetTo,
     IReadOnlyList<MenteeGoalResponse> Goals,
@@ -45,7 +45,7 @@ public sealed record MenteeProfileResponse(
     {
         LookupResponse Lookup(Guid id) => LookupResponse.From(profile.CatalogEntries[id]);
 
-        var meetingCity = profile.Availability?.MeetingCityId is { } cityId ? Lookup(cityId) : null;
+        var meetingCity = profile.Availability?.MeetingCityId is { } cityId ? profile.CatalogEntries[cityId] : null;
         var ownedSkills = profile.OwnedSkills.Select(skill =>
             new MenteeOwnedSkillResponse(Lookup(skill.SkillId), Lookup(skill.SkillLevelId)));
 
@@ -57,7 +57,7 @@ public sealed record MenteeProfileResponse(
             profile.TaskIds.Select(Lookup).ToArray(),
             Lookup(profile.FormatId),
             Lookup(profile.AvailabilityId),
-            MenteeAvailabilityResponse.From(profile.Availability, meetingCity),
+            ProfileAvailabilityResponse.From(profile.Availability, meetingCity),
             Money.Format(profile.BudgetFrom),
             Money.Format(profile.BudgetTo),
             profile.Goals.Select(MenteeGoalResponse.From).ToArray(),

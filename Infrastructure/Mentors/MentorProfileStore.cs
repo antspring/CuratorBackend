@@ -54,6 +54,11 @@ internal sealed class MentorProfileStore(AppDbContext db, PersonalProfileStore p
             mentor.ReplaceSkills(skills);
         }
 
+        if (patch.Availability is { } availability)
+        {
+            mentor.UpdateAvailability(availability);
+        }
+
         var personal = await db.UserProfiles.SingleAsync(profile => profile.UserId == userId, cancellationToken);
         personal.MarkUpdated(now);
         await db.SaveChangesAsync(cancellationToken);

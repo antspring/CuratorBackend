@@ -20,7 +20,7 @@ public sealed record MenteeProfilePatch(
     MenteePersonalInput? Personal,
     IReadOnlyList<MenteeOwnedSkillChoice>? OwnedSkills,
     IReadOnlyList<MenteeGoalChoice>? Goals,
-    MenteeAvailability? Availability);
+    ProfileAvailability? Availability);
 
 public sealed record SaveMenteeProfileCommand(
     Guid UserId,
@@ -56,7 +56,7 @@ public sealed record MenteeProfileView(
     IReadOnlyList<Guid> TaskIds,
     Guid FormatId,
     Guid AvailabilityId,
-    MenteeAvailability? Availability,
+    ProfileAvailability? Availability,
     decimal? BudgetFrom,
     decimal? BudgetTo,
     IReadOnlyList<MenteeGoalView> Goals,

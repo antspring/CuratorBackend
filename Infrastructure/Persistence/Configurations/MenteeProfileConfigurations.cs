@@ -29,13 +29,8 @@ internal sealed class MenteeProfileConfiguration : IEntityTypeConfiguration<Ment
         builder.HasOne<CatalogItem>().WithMany().HasForeignKey(profile => profile.FormatId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<CatalogItem>().WithMany().HasForeignKey(profile => profile.AvailabilityId).OnDelete(DeleteBehavior.Restrict);
 
-        builder.OwnsOne(profile => profile.Availability, availability =>
-        {
-            availability.ToTable("mentee_availability");
-            availability.WithOwner().HasForeignKey("MenteeId");
-            availability.Property(schedule => schedule.TimeZoneId).HasMaxLength(MenteeAvailability.TimeZoneIdMaxLength);
-            availability.HasOne<City>().WithMany().HasForeignKey(schedule => schedule.MeetingCityId).OnDelete(DeleteBehavior.Restrict);
-        });
+        builder.OwnsOne(profile => profile.Availability,
+            availability => ProfileAvailabilityConfiguration.Configure(availability, "mentee_availability", "MenteeId"));
 
         builder.HasMany(profile => profile.Skills)
             .WithOne()

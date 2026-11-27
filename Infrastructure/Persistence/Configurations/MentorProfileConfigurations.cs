@@ -27,6 +27,9 @@ internal sealed class MentorProfileConfiguration : IEntityTypeConfiguration<Ment
         builder.HasOne<CatalogItem>().WithMany().HasForeignKey(profile => profile.AvailabilityId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<CatalogItem>().WithMany().HasForeignKey(profile => profile.PricingModelId).OnDelete(DeleteBehavior.Restrict);
 
+        builder.OwnsOne(profile => profile.Availability,
+            availability => ProfileAvailabilityConfiguration.Configure(availability, "mentor_availability", "MentorId"));
+
         builder.HasMany(profile => profile.Workplaces)
             .WithOne()
             .HasForeignKey(workplace => workplace.MentorId)

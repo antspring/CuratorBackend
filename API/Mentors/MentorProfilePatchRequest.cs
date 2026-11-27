@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using API.Profiles;
 using Application.Mentors;
 using Domain.Common;
 using Domain.Mentors;
@@ -13,9 +14,11 @@ public sealed class MentorProfilePatchRequest : IValidatableObject
     [MaxLength(MentorAnswers.MaxSkills)]
     public MentorSkillRequest?[]? Skills { get; init; }
 
+    public ProfileAvailabilityRequest? Availability { get; init; }
+
     public IEnumerable<ValidationResult> Validate(ValidationContext validationContext)
     {
-        if (Workplaces is null && Skills is null)
+        if (Workplaces is null && Skills is null && Availability is null)
         {
             yield return new ValidationResult("Укажите хотя бы одну плашку профиля.");
         }
@@ -24,7 +27,8 @@ public sealed class MentorProfilePatchRequest : IValidatableObject
     public MentorProfilePatch ToPatch() => new(
         Workplaces?.Select((workplace, index) => workplace?.ToChoice()
             ?? throw new DomainException($"Workplaces[{index}]", "Заполните данные места работы.")).ToArray(),
-        Skills is null ? null : MentorSkillRequest.ToChoices(Skills, nameof(Skills)));
+        Skills is null ? null : MentorSkillRequest.ToChoices(Skills, nameof(Skills)),
+        Availability?.ToAvailability());
 }
 
 public sealed class MentorWorkplaceRequest

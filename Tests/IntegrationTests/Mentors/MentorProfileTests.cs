@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Http.Json;
+using System.Text.Json;
 using Domain.Catalogs;
 using Domain.Users;
 using IntegrationTests.Infrastructure;
@@ -381,6 +382,91 @@ public class MentorProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var profile = await client.GetFromJsonAsync<MentorProfileDto>(Path);
         Assert.Empty(profile!.Skills);
         Assert.Empty(profile.Workplaces);
+    }
+
+    [Fact]
+    public async Task PatchAvailability_SavesScheduleSeparatelyAndReturnsTheMeetingCity()
+    {
+        var (client, _) = await factory.SignedInClientAsync();
+        var input = await ValidProfileAsync();
+        var questionnaire = await client.PutAsJsonAsync(Path, input);
+        questionnaire.EnsureSuccessStatusCode();
+        Assert.Equal(JsonValueKind.Null, (await questionnaire.ReadAsync<JsonElement>()).GetProperty("availability").ValueKind);
+
+        var catalogs = await factory.CatalogsAsync();
+        var cityId = catalogs[CatalogKinds.Cities].First(id => id != input.Personal.CityId);
+        var availability = new
+        {
+            days = new[] { "friday", "monday" },
+            startTime = "18:00",
+            endTime = "21:00",
+            timeZoneId = "Asia/Yekaterinburg",
+            formats = new[] { "offline", "online" },
+            meetingCityId = (Guid?)cityId,
+        };
+        var workplace = new { company = "Команда", title = "Инженер", startYear = 2021, isCurrent = true };
+        var saved = await client.PatchAsJsonAsync(Path, new { availability, workplaces = new[] { workplace } });
+        saved.EnsureSuccessStatusCode();
+
+        var profile = await saved.ReadAsync<JsonElement>();
+        var schedule = profile.GetProperty("availability");
+        Assert.Equal(new[] { "monday", "friday" }, schedule.GetProperty("days").Deserialize<string[]>());
+        Assert.Equal(new[] { "online", "offline" }, schedule.GetProperty("formats").Deserialize<string[]>());
+        Assert.Equal(availability.startTime, schedule.GetProperty("startTime").GetString());
+        Assert.Equal(availability.endTime, schedule.GetProperty("endTime").GetString());
+        Assert.Equal(availability.timeZoneId, schedule.GetProperty("timeZoneId").GetString());
+        var city = schedule.GetProperty("meetingCity");
+        Assert.Equal(cityId, city.GetProperty("id").GetGuid());
+        Assert.False(string.IsNullOrWhiteSpace(city.GetProperty("name").GetString()));
+        Assert.Equal(input.AvailabilityId, profile.GetProperty("availabilityId").GetGuid());
+        Assert.Equal(input.FormatId, profile.GetProperty("formatId").GetGuid());
+        Assert.Single(profile.GetProperty("workplaces").EnumerateArray());
+
+        var fetched = await client.GetFromJsonAsync<JsonElement>(Path);
+        Assert.True(JsonElement.DeepEquals(schedule, fetched.GetProperty("availability")));
+
+        var updated = availability with { days = ["tuesday"], formats = ["online"], meetingCityId = null };
+        var replaced = await client.PatchAsJsonAsync(Path, new { availability = updated });
+        replaced.EnsureSuccessStatusCode();
+        var newSchedule = (await replaced.ReadAsync<JsonElement>()).GetProperty("availability");
+        Assert.Equal(updated.days, newSchedule.GetProperty("days").Deserialize<string[]>());
+        Assert.Equal(JsonValueKind.Null, newSchedule.GetProperty("meetingCity").ValueKind);
+
+        var newHours = catalogs[CatalogKinds.Availability].First(id => id != input.AvailabilityId);
+        var repeated = await client.PutAsJsonAsync(Path, input with { AvailabilityId = newHours });
+        repeated.EnsureSuccessStatusCode();
+        var persisted = await repeated.ReadAsync<JsonElement>();
+        Assert.Equal(newHours, persisted.GetProperty("availabilityId").GetGuid());
+        Assert.True(JsonElement.DeepEquals(newSchedule, persisted.GetProperty("availability")));
+        Assert.Single(persisted.GetProperty("workplaces").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task PatchAvailability_InvalidScheduleDoesNotSaveTheOtherSection()
+    {
+        var (client, _) = await factory.SignedInClientAsync();
+        var input = await ValidProfileAsync();
+        (await client.PutAsJsonAsync(Path, input)).EnsureSuccessStatusCode();
+        var workplace = new { company = "Команда", title = "Инженер", startYear = 2021, isCurrent = true };
+        var availability = new
+        {
+            days = new[] { "monday" },
+            startTime = "18:00",
+            endTime = "21:00",
+            timeZoneId = "UTC",
+            formats = new[] { "offline" },
+            meetingCityId = input.FormatId,
+        };
+
+        var invalidCity = await client.PatchAsJsonAsync(Path, new { availability, workplaces = new[] { workplace } });
+        await ProfileTestData.AssertFieldErrorAsync(invalidCity, "availability.meetingCityId");
+        var invalidTime = await client.PatchAsJsonAsync(Path,
+            new { availability = availability with { endTime = "17:00" }, workplaces = new[] { workplace } });
+        await ProfileTestData.AssertFieldErrorAsync(invalidTime, "availability.endTime");
+
+        var profile = await client.GetFromJsonAsync<JsonElement>(Path);
+        Assert.Equal(JsonValueKind.Null, profile.GetProperty("availability").ValueKind);
+        Assert.Empty(profile.GetProperty("workplaces").EnumerateArray());
     }
 
     private async Task<MentorProfileInput> ValidProfileAsync()
