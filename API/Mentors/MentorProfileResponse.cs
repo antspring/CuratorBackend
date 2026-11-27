@@ -5,8 +5,6 @@ namespace API.Mentors;
 
 public sealed record MentorSkillResponse(Guid SkillId, Guid SkillLevelId);
 
-public sealed record MentorWorkExperienceResponse(IReadOnlyList<MentorWorkplaceView> Workplaces);
-
 public sealed record MentorProfileResponse(
     Guid UserId,
     PersonalInfoResponse Personal,

@@ -13,11 +13,7 @@ internal sealed class MentorProfileStore(AppDbContext db, PersonalProfileStore p
 {
     public async Task<MentorProfileSnapshot?> FindAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var mentor = await db.MentorProfiles.AsNoTracking()
-            .Include(profile => profile.Skills)
-            .Include(profile => profile.Directions)
-            .Include(profile => profile.Workplaces)
-            .AsSplitQuery()
+        var mentor = await WithDetails(db.MentorProfiles.AsNoTracking())
             .SingleOrDefaultAsync(profile => profile.UserId == userId, cancellationToken);
 
         if (mentor is null)
@@ -30,7 +26,7 @@ internal sealed class MentorProfileStore(AppDbContext db, PersonalProfileStore p
         return new MentorProfileSnapshot(personal.Profile, mentor, personal.PhotoStorageKey);
     }
 
-    public async Task<IReadOnlyList<MentorWorkplace>?> ReplaceWorkplacesAsync(
+    public async Task<MentorProfileSnapshot?> PatchAsync(
         Guid userId, IReadOnlyList<MentorWorkplaceInput> workplaces, DateTimeOffset now, CancellationToken cancellationToken)
     {
         await using var transaction = Transaction.Current is null
@@ -41,7 +37,7 @@ internal sealed class MentorProfileStore(AppDbContext db, PersonalProfileStore p
             return null;
         }
 
-        var mentor = await db.MentorProfiles.Include(profile => profile.Workplaces)
+        var mentor = await WithDetails(db.MentorProfiles)
             .SingleOrDefaultAsync(profile => profile.UserId == userId, cancellationToken);
         if (mentor is null)
         {
@@ -53,12 +49,14 @@ internal sealed class MentorProfileStore(AppDbContext db, PersonalProfileStore p
         personal.MarkUpdated(now);
         await db.SaveChangesAsync(cancellationToken);
 
+        var photoStorageKey = await personalProfiles.FindPhotoStorageKeyAsync(personal.PhotoFileId, cancellationToken);
+
         if (transaction is not null)
         {
             await transaction.CommitAsync(cancellationToken);
         }
 
-        return mentor.Workplaces.ToArray();
+        return new MentorProfileSnapshot(personal, mentor, photoStorageKey);
     }
 
     public async Task<SaveProfileOutcome> SaveAsync(
@@ -103,4 +101,11 @@ internal sealed class MentorProfileStore(AppDbContext db, PersonalProfileStore p
 
         return SaveProfileOutcome.Saved;
     }
+
+    private static IQueryable<MentorProfile> WithDetails(IQueryable<MentorProfile> profiles) =>
+        profiles
+            .Include(profile => profile.Skills)
+            .Include(profile => profile.Directions)
+            .Include(profile => profile.Workplaces)
+            .AsSplitQuery();
 }
