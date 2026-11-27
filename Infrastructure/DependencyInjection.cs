@@ -2,12 +2,14 @@ using Application.Accounts;
 using Application.Catalogs;
 using Application.Mentees;
 using Application.Mentors;
+using Application.Mentorships;
 using Application.Sessions;
 using Infrastructure.Authentication;
 using Infrastructure.Files;
 using Infrastructure.Identity;
 using Infrastructure.Mentees;
 using Infrastructure.Mentors;
+using Infrastructure.Mentorships;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.Seeding;
 using Infrastructure.Profiles;
@@ -73,6 +75,7 @@ public static class DependencyInjection
         services.AddScoped<PersonalProfileStore>();
         services.AddScoped<IMenteeProfileStore, MenteeProfileStore>();
         services.AddScoped<IMentorProfileStore, MentorProfileStore>();
+        services.AddScoped<IMentorshipStore, MentorshipStore>();
 
         services.AddJwtAuthentication(configuration);
         services.AddFileStorage(configuration);

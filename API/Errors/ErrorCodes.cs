@@ -13,6 +13,10 @@ public static class ErrorCodes
     public const string ResourceNotFound = "resource_not_found";
     public const string AccountExists = "account_exists";
     public const string RoleConflict = "role_conflict";
+    public const string ProfileIncomplete = "profile_incomplete";
+    public const string RequestExists = "request_exists";
+    public const string ActiveMentorshipExists = "active_mentorship_exists";
+    public const string InvalidTransition = "invalid_transition";
     public const string FileTooLarge = "file_too_large";
     public const string UnsupportedMediaType = "unsupported_media_type";
     public const string RateLimitExceeded = "rate_limit_exceeded";
