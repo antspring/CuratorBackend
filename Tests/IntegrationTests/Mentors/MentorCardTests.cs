@@ -89,21 +89,20 @@ public class MentorCardTests(ApiFactory factory) : IClassFixture<ApiFactory>
         var (viewer, _) = await factory.SignedInClientAsync();
         var input = ProfileInput(await factory.CatalogsAsync());
         (await mentor.PutAsJsonAsync("/api/v1/me/mentor-profile", input)).EnsureSuccessStatusCode();
-        const string experiencePath = "/api/v1/me/mentor-profile/work-experience";
         var former = new { company = "Предыдущая компания", title = "Инженер", startYear = 2017, endYear = (int?)2020, isCurrent = false };
         var first = new { company = "Первая команда", title = "Руководитель разработки", startYear = 2020, endYear = (int?)null, isCurrent = true };
         var second = new { company = "Вторая команда", title = "Архитектор", startYear = 2023, endYear = (int?)null, isCurrent = true };
         var cardPath = $"/api/v1/mentors/{tokens.Account.Id}";
-        (await mentor.PutAsJsonAsync(experiencePath, new { workplaces = new[] { former, first, second } })).EnsureSuccessStatusCode();
+        (await mentor.PatchAsJsonAsync("/api/v1/me/mentor-profile", new { workplaces = new[] { former, first, second } })).EnsureSuccessStatusCode();
         var card = await viewer.GetFromJsonAsync<MentorCardDto>(cardPath);
         Assert.Equal(new MentorCurrentWorkplaceDto(first.company, first.title), card!.CurrentWorkplace);
         Assert.Equal(input.PositionId, card.Position.Id);
 
-        (await mentor.PutAsJsonAsync(experiencePath, new { workplaces = new[] { former, second, first } })).EnsureSuccessStatusCode();
+        (await mentor.PatchAsJsonAsync("/api/v1/me/mentor-profile", new { workplaces = new[] { former, second, first } })).EnsureSuccessStatusCode();
         var reordered = await viewer.GetFromJsonAsync<MentorCardDto>(cardPath);
         Assert.Equal(new MentorCurrentWorkplaceDto(second.company, second.title), reordered!.CurrentWorkplace);
 
-        (await mentor.PutAsJsonAsync(experiencePath, new { workplaces = new[] { former } })).EnsureSuccessStatusCode();
+        (await mentor.PatchAsJsonAsync("/api/v1/me/mentor-profile", new { workplaces = new[] { former } })).EnsureSuccessStatusCode();
         var withoutCurrent = await viewer.GetFromJsonAsync<MentorCardDto>(cardPath);
         Assert.Null(withoutCurrent!.CurrentWorkplace);
         Assert.Equal(card.Position, withoutCurrent.Position);

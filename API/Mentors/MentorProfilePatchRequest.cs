@@ -4,7 +4,7 @@ using Domain.Mentors;
 
 namespace API.Mentors;
 
-public sealed class MentorWorkExperienceRequest
+public sealed class MentorProfilePatchRequest
 {
     [Required, MaxLength(MentorProfile.MaxWorkplaces)]
     public MentorWorkplaceRequest?[] Workplaces { get; init; } = null!;

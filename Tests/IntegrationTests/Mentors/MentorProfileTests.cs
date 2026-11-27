@@ -23,8 +23,6 @@ public sealed record MentorProfileInput(
 
 public sealed record MentorWorkplaceDto(Guid Id, string Company, string Title, int StartYear, int? EndYear, bool IsCurrent);
 
-public sealed record MentorWorkExperienceDto(MentorWorkplaceDto[] Workplaces);
-
 public sealed record MentorProfileDto(
     Guid UserId,
     PersonalDto Personal,
@@ -218,7 +216,7 @@ public class MentorProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task PutWorkExperience_AssignsIdsAndReusesThemWhenTheListIsResent()
+    public async Task PatchWorkplaces_AssignsIdsAndReusesThemWhenTheListIsResent()
     {
         var (client, _) = await factory.SignedInClientAsync();
         var input = await ValidProfileAsync();
@@ -228,24 +226,27 @@ public class MentorProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
 
         var current = new { Company = "Команда Б", Title = "Старший инженер", StartYear = 2022, EndYear = (int?)null, IsCurrent = true };
         var past = new { Company = "Команда А", Title = "Инженер", StartYear = 2018, EndYear = (int?)2022, IsCurrent = false };
-        var path = $"{Path}/work-experience";
         var initialList = new { workplaces = new[] { current, past } };
 
-        var saved = await client.PutAsJsonAsync(path, initialList);
+        var saved = await client.PatchAsJsonAsync(Path, initialList);
         Assert.Equal(HttpStatusCode.OK, saved.StatusCode);
-        var workplaces = (await saved.ReadAsync<MentorWorkExperienceDto>()).Workplaces;
+        var savedProfile = await saved.ReadAsync<MentorProfileDto>();
+        Assert.Equal(input.PositionId, savedProfile.PositionId);
+        Assert.Equal(input.ExperienceId, savedProfile.ExperienceId);
+        Assert.Equal(input.Skills.OrderBy(skill => skill.SkillId), savedProfile.Skills);
+        var workplaces = savedProfile.Workplaces;
         Assert.Equal(new[] { current.Company, past.Company }, workplaces.Select(workplace => workplace.Company));
         Assert.All(workplaces, workplace => Assert.NotEqual(Guid.Empty, workplace.Id));
         Assert.NotEqual(workplaces[0].Id, workplaces[1].Id);
 
-        var retryWithoutIds = await client.PutAsJsonAsync(path, initialList);
+        var retryWithoutIds = await client.PatchAsJsonAsync(Path, initialList);
         retryWithoutIds.EnsureSuccessStatusCode();
-        Assert.Equal(workplaces, (await retryWithoutIds.ReadAsync<MentorWorkExperienceDto>()).Workplaces);
+        Assert.Equal(workplaces, (await retryWithoutIds.ReadAsync<MentorProfileDto>()).Workplaces);
 
         var savedById = workplaces[0] with { Title = "Ведущий инженер" };
-        var mixed = await client.PutAsJsonAsync(path, new { workplaces = new object[] { past, savedById } });
+        var mixed = await client.PatchAsJsonAsync(Path, new { workplaces = new object[] { past, savedById } });
         mixed.EnsureSuccessStatusCode();
-        Assert.Equal(new[] { workplaces[1], savedById }, (await mixed.ReadAsync<MentorWorkExperienceDto>()).Workplaces);
+        Assert.Equal(new[] { workplaces[1], savedById }, (await mixed.ReadAsync<MentorProfileDto>()).Workplaces);
 
         var profile = await client.GetFromJsonAsync<MentorProfileDto>(Path);
         Assert.Equal(new[] { workplaces[1], savedById }, profile!.Workplaces);
@@ -253,9 +254,9 @@ public class MentorProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(input.ExperienceId, profile.ExperienceId);
         Assert.Equal(input.Skills.OrderBy(skill => skill.SkillId), profile.Skills);
 
-        var replacement = await client.PutAsJsonAsync(path, new { workplaces = new[] { savedById } });
+        var replacement = await client.PatchAsJsonAsync(Path, new { workplaces = new[] { savedById } });
         replacement.EnsureSuccessStatusCode();
-        Assert.Equal(savedById, Assert.Single((await replacement.ReadAsync<MentorWorkExperienceDto>()).Workplaces));
+        Assert.Equal(savedById, Assert.Single((await replacement.ReadAsync<MentorProfileDto>()).Workplaces));
 
         var repeated = await client.PutAsJsonAsync(Path, input with { Price = "1200.00" });
         repeated.EnsureSuccessStatusCode();
@@ -263,22 +264,21 @@ public class MentorProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
         Assert.Equal(savedById, Assert.Single(after.Workplaces));
         Assert.Equal("1200.00", after.Price);
 
-        var cleared = await client.PutAsJsonAsync(path, new { workplaces = Array.Empty<MentorWorkplaceDto>() });
+        var cleared = await client.PatchAsJsonAsync(Path, new { workplaces = Array.Empty<MentorWorkplaceDto>() });
         cleared.EnsureSuccessStatusCode();
-        Assert.Empty((await cleared.ReadAsync<MentorWorkExperienceDto>()).Workplaces);
+        Assert.Empty((await cleared.ReadAsync<MentorProfileDto>()).Workplaces);
         Assert.Empty((await client.GetFromJsonAsync<MentorProfileDto>(Path))!.Workplaces);
     }
 
     [Fact]
-    public async Task PutWorkExperience_InvalidYearsAndDuplicateIdsPreserveSavedHistory()
+    public async Task PatchWorkplaces_InvalidYearsAndDuplicateIdsPreserveSavedHistory()
     {
         var (client, _) = await factory.SignedInClientAsync();
         (await client.PutAsJsonAsync(Path, await ValidProfileAsync())).EnsureSuccessStatusCode();
-        var path = $"{Path}/work-experience";
         var draft = new { company = "Команда", title = "Инженер", startYear = 2021, isCurrent = true };
-        var saved = await client.PutAsJsonAsync(path, new { workplaces = new[] { draft } });
+        var saved = await client.PatchAsJsonAsync(Path, new { workplaces = new[] { draft } });
         saved.EnsureSuccessStatusCode();
-        var workplace = Assert.Single((await saved.ReadAsync<MentorWorkExperienceDto>()).Workplaces);
+        var workplace = Assert.Single((await saved.ReadAsync<MentorProfileDto>()).Workplaces);
 
         (MentorWorkplaceDto[] Choices, string Field)[] invalid =
         [
@@ -292,7 +292,7 @@ public class MentorProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
 
         foreach (var (choices, field) in invalid)
         {
-            var response = await client.PutAsJsonAsync(path, new { workplaces = choices });
+            var response = await client.PatchAsJsonAsync(Path, new { workplaces = choices });
             await ProfileTestData.AssertFieldErrorAsync(response, field);
         }
 
@@ -301,15 +301,14 @@ public class MentorProfileTests(ApiFactory factory) : IClassFixture<ApiFactory>
     }
 
     [Fact]
-    public async Task PutWorkExperience_RequiresAuthenticationAndAnExistingMentorProfile()
+    public async Task PatchWorkplaces_RequiresAuthenticationAndAnExistingMentorProfile()
     {
-        var path = $"{Path}/work-experience";
         var body = new { workplaces = Array.Empty<MentorWorkplaceDto>() };
-        var anonymous = await factory.CreateClient().PutAsJsonAsync(path, body);
+        var anonymous = await factory.CreateClient().PatchAsJsonAsync(Path, body);
         Assert.Equal(HttpStatusCode.Unauthorized, anonymous.StatusCode);
 
         var (client, _) = await factory.SignedInClientAsync();
-        var missing = await client.PutAsJsonAsync(path, body);
+        var missing = await client.PatchAsJsonAsync(Path, body);
         Assert.Equal(HttpStatusCode.NotFound, missing.StatusCode);
         Assert.Equal("resource_not_found", (await missing.ReadAsync<ProblemDto>()).Code);
     }

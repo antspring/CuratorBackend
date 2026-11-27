@@ -18,11 +18,11 @@ public sealed class MentorProfileService(
         return snapshot is null ? null : ToView(snapshot);
     }
 
-    public async Task<IReadOnlyList<MentorWorkplaceView>?> ReplaceWorkplacesAsync(
+    public async Task<MentorProfileView?> PatchAsync(
         Guid userId, IReadOnlyList<MentorWorkplaceInput> workplaces, CancellationToken cancellationToken)
     {
-        var saved = await store.ReplaceWorkplacesAsync(userId, workplaces, timeProvider.GetUtcNow(), cancellationToken);
-        return saved is null ? null : MentorWorkplaceView.From(saved);
+        var snapshot = await store.PatchAsync(userId, workplaces, timeProvider.GetUtcNow(), cancellationToken);
+        return snapshot is null ? null : ToView(snapshot);
     }
 
     public async Task<SaveMentorProfileResult> SaveAsync(SaveMentorProfileCommand command, CancellationToken cancellationToken)
