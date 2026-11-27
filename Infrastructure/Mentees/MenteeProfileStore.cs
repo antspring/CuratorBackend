@@ -14,12 +14,7 @@ internal sealed class MenteeProfileStore(AppDbContext db, PersonalProfileStore p
 {
     public async Task<MenteeProfileSnapshot?> FindAsync(Guid userId, CancellationToken cancellationToken)
     {
-        var mentee = await db.MenteeProfiles.AsNoTracking()
-            .Include(profile => profile.Skills)
-            .Include(profile => profile.OwnedSkills)
-            .Include(profile => profile.Goals).ThenInclude(goal => goal.Directions)
-            .Include(profile => profile.Tasks)
-            .AsSplitQuery()
+        var mentee = await WithDetails(db.MenteeProfiles.AsNoTracking())
             .SingleOrDefaultAsync(profile => profile.UserId == userId, cancellationToken);
 
         if (mentee is null)
@@ -32,69 +27,55 @@ internal sealed class MenteeProfileStore(AppDbContext db, PersonalProfileStore p
         return new MenteeProfileSnapshot(personal.Profile, mentee, personal.PhotoStorageKey);
     }
 
-    public Task<bool> UpdatePersonalAsync(
-        SaveMenteePersonalCommand command, StoredFile? photo, DateTimeOffset now, CancellationToken cancellationToken) =>
-        UpdateSectionAsync(command.UserId, db.MenteeProfiles, (mentee, personal) =>
-        {
-            personal.Update(new PersonalData(command.FirstName, command.LastName, command.Age, command.CityId, personal.LanguageId, photo), now);
-            mentee.UpdatePersonalDetails(command.Status, command.University, command.Specialty, command.AboutMe);
-        }, cancellationToken);
-
-    public Task<bool> ReplaceOwnedSkillsAsync(
-        Guid userId, IReadOnlyList<MenteeOwnedSkillChoice> choices, DateTimeOffset now, CancellationToken cancellationToken) =>
-        UpdateSectionAsync(userId, db.MenteeProfiles.Include(profile => profile.OwnedSkills),
-            (mentee, personal) =>
-            {
-                mentee.ReplaceOwnedSkills(choices);
-                personal.MarkUpdated(now);
-            }, cancellationToken);
-
-    public Task<bool> ReplaceGoalsAsync(
-        Guid userId, IReadOnlyList<MenteeGoalChoice> choices, DateTimeOffset now, CancellationToken cancellationToken) =>
-        UpdateSectionAsync(userId, db.MenteeProfiles.Include(profile => profile.Goals).ThenInclude(goal => goal.Directions).AsSplitQuery(),
-            (mentee, personal) =>
-            {
-                mentee.ReplaceGoals(choices);
-                personal.MarkUpdated(now);
-            }, cancellationToken);
-
-    public Task<bool> UpdateAvailabilityAsync(
-        Guid userId, MenteeAvailability availability, DateTimeOffset now, CancellationToken cancellationToken) =>
-        UpdateSectionAsync(userId, db.MenteeProfiles, (mentee, personal) =>
-        {
-            mentee.UpdateAvailability(availability);
-            personal.MarkUpdated(now);
-        }, cancellationToken);
-
-    private async Task<bool> UpdateSectionAsync(
-        Guid userId,
-        IQueryable<MenteeProfile> profiles,
-        Action<MenteeProfile, UserProfile> update,
-        CancellationToken cancellationToken)
+    public async Task<MenteeProfileSnapshot?> PatchAsync(
+        Guid userId, MenteeProfilePatch patch, StoredFile? photo, DateTimeOffset now, CancellationToken cancellationToken)
     {
         await using var transaction = Transaction.Current is null
             ? await db.Database.BeginTransactionAsync(cancellationToken)
             : null;
         if (!await personalProfiles.LockUserAsync(userId, cancellationToken))
         {
-            return false;
+            return null;
         }
 
-        var mentee = await profiles.SingleOrDefaultAsync(profile => profile.UserId == userId, cancellationToken);
+        var mentee = await WithDetails(db.MenteeProfiles)
+            .SingleOrDefaultAsync(profile => profile.UserId == userId, cancellationToken);
         if (mentee is null)
         {
-            return false;
+            return null;
         }
 
         var personal = await db.UserProfiles.SingleAsync(profile => profile.UserId == userId, cancellationToken);
-        update(mentee, personal);
+        if (patch.Personal is { } input)
+        {
+            personal.Update(new PersonalData(input.FirstName, input.LastName, input.Age, input.CityId, personal.LanguageId, photo), now);
+            mentee.UpdatePersonalDetails(input.Status, input.University, input.Specialty, input.AboutMe);
+        }
+
+        if (patch.OwnedSkills is { } skills)
+        {
+            mentee.ReplaceOwnedSkills(skills);
+        }
+
+        if (patch.Goals is { } goals)
+        {
+            mentee.ReplaceGoals(goals);
+        }
+
+        if (patch.Availability is { } availability)
+        {
+            mentee.UpdateAvailability(availability);
+        }
+
+        personal.MarkUpdated(now);
         await db.SaveChangesAsync(cancellationToken);
+        var photoStorageKey = await personalProfiles.FindPhotoStorageKeyAsync(personal.PhotoFileId, cancellationToken);
         if (transaction is not null)
         {
             await transaction.CommitAsync(cancellationToken);
         }
 
-        return true;
+        return new MenteeProfileSnapshot(personal, mentee, photoStorageKey);
     }
 
     public async Task<SaveProfileOutcome> SaveAsync(
@@ -117,6 +98,7 @@ internal sealed class MenteeProfileStore(AppDbContext db, PersonalProfileStore p
 
         var mentee = await db.MenteeProfiles
             .Include(existing => existing.Skills)
+            .Include(existing => existing.OwnedSkills)
             .Include(existing => existing.Tasks)
             .AsSplitQuery()
             .SingleOrDefaultAsync(existing => existing.UserId == userId, cancellationToken);
@@ -139,4 +121,11 @@ internal sealed class MenteeProfileStore(AppDbContext db, PersonalProfileStore p
 
         return SaveProfileOutcome.Saved;
     }
+
+    private static IQueryable<MenteeProfile> WithDetails(IQueryable<MenteeProfile> profiles) =>
+        profiles.Include(profile => profile.Skills)
+            .Include(profile => profile.OwnedSkills)
+            .Include(profile => profile.Goals).ThenInclude(goal => goal.Directions)
+            .Include(profile => profile.Tasks)
+            .AsSplitQuery();
 }

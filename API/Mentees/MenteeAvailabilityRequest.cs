@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
+using Domain.Common;
 using Domain.Mentees;
 
 namespace API.Mentees;
@@ -26,7 +27,16 @@ public sealed class MenteeAvailabilityRequest
 
     public Guid? MeetingCityId { get; init; }
 
-    public MenteeAvailability ToAvailability() =>
-        new(Days, TimeOnly.ParseExact(StartTime, TimeFormat, CultureInfo.InvariantCulture),
-            TimeOnly.ParseExact(EndTime, TimeFormat, CultureInfo.InvariantCulture), TimeZoneId, Formats, MeetingCityId);
+    public MenteeAvailability ToAvailability()
+    {
+        try
+        {
+            return new(Days, TimeOnly.ParseExact(StartTime, TimeFormat, CultureInfo.InvariantCulture),
+                TimeOnly.ParseExact(EndTime, TimeFormat, CultureInfo.InvariantCulture), TimeZoneId, Formats, MeetingCityId);
+        }
+        catch (DomainException exception)
+        {
+            throw new DomainException($"Availability.{exception.Field}", exception.Message);
+        }
+    }
 }

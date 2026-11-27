@@ -15,8 +15,8 @@ public sealed class MenteeProfileRequest
     [MaxLength(MenteeAnswers.MaxSkills)]
     public Guid[] SkillIds { get; init; } = null!;
 
-    [Required]
-    public Guid? SkillLevelId { get; init; }
+    [Required, MinLength(1), MaxLength(MenteeAnswers.MaxOwnedSkills)]
+    public MenteeOwnedSkillRequest?[] OwnedSkills { get; init; } = null!;
 
     [Required]
     [MinLength(1)]
@@ -35,24 +35,19 @@ public sealed class MenteeProfileRequest
     [RegularExpression(Money.Pattern)]
     public string? BudgetTo { get; init; }
 
-    [Required]
-    [StringLength(MenteeAnswers.GoalMaxLength, MinimumLength = MenteeAnswers.GoalMinLength)]
-    public string Goal { get; init; } = null!;
-
-    [Required]
-    public Guid? GoalDeadlineId { get; init; }
+    [Required, MinLength(1), MaxLength(MenteeProfile.MaxGoals)]
+    public MenteeGoalRequest?[] Goals { get; init; } = null!;
 
     public SaveMenteeProfileCommand ToCommand(Guid userId) =>
         new(
             userId,
             Personal.ToInput(),
             SkillIds,
-            SkillLevelId!.Value,
+            MenteeOwnedSkillRequest.ToChoices(OwnedSkills),
             TaskIds,
             FormatId!.Value,
             AvailabilityId!.Value,
             Money.Parse(BudgetFrom),
             Money.Parse(BudgetTo),
-            Goal,
-            GoalDeadlineId!.Value);
+            MenteeGoalRequest.ToChoices(Goals));
 }

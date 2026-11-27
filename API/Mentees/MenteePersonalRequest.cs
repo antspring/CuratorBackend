@@ -33,6 +33,6 @@ public sealed class MenteePersonalRequest
     [MaxLength(MenteeProfile.AboutMeMaxLength)]
     public string? AboutMe { get; init; }
 
-    public SaveMenteePersonalCommand ToCommand(Guid userId) =>
-        new(userId, FirstName, LastName, Age!.Value, CityId!.Value, PhotoFileId, Status, University, Specialty, AboutMe);
+    public MenteePersonalInput ToInput() =>
+        new(FirstName, LastName, Age!.Value, CityId!.Value, PhotoFileId, Status, University, Specialty, AboutMe);
 }

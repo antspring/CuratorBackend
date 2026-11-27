@@ -5,8 +5,7 @@ using Domain.Users;
 
 namespace Application.Mentees;
 
-public sealed record SaveMenteePersonalCommand(
-    Guid UserId,
+public sealed record MenteePersonalInput(
     string FirstName,
     string LastName,
     int Age,
@@ -17,18 +16,33 @@ public sealed record SaveMenteePersonalCommand(
     string? Specialty,
     string? AboutMe);
 
+public sealed record MenteeProfilePatch(
+    MenteePersonalInput? Personal,
+    IReadOnlyList<MenteeOwnedSkillChoice>? OwnedSkills,
+    IReadOnlyList<MenteeGoalChoice>? Goals,
+    MenteeAvailability? Availability);
+
 public sealed record SaveMenteeProfileCommand(
     Guid UserId,
     PersonalInput Personal,
     IReadOnlyList<Guid> SkillIds,
-    Guid SkillLevelId,
+    IReadOnlyList<MenteeOwnedSkillChoice> OwnedSkills,
     IReadOnlyList<Guid> TaskIds,
     Guid FormatId,
     Guid AvailabilityId,
     decimal? BudgetFrom,
     decimal? BudgetTo,
-    string Goal,
-    Guid GoalDeadlineId);
+    IReadOnlyList<MenteeGoalChoice> Goals);
+
+public sealed record MenteeGoalView(Guid Id, string Text, CatalogRef Deadline, IReadOnlyList<CatalogRef> Directions)
+{
+    public static IReadOnlyList<MenteeGoalView> From(
+        IEnumerable<MenteeGoal> goals, IReadOnlyDictionary<Guid, CatalogRef> catalogEntries) =>
+        goals.OrderBy(goal => goal.SortOrder)
+            .Select(goal => new MenteeGoalView(goal.Id, goal.Text, catalogEntries[goal.DeadlineId],
+                goal.Directions.Select(direction => direction.DirectionId).Order().Select(id => catalogEntries[id]).ToArray()))
+            .ToArray();
+}
 
 public sealed record MenteeProfileView(
     Guid UserId,
@@ -39,16 +53,13 @@ public sealed record MenteeProfileView(
     string? AboutMe,
     IReadOnlyList<MenteeOwnedSkillChoice> OwnedSkills,
     IReadOnlyList<Guid> SkillIds,
-    Guid SkillLevelId,
     IReadOnlyList<Guid> TaskIds,
     Guid FormatId,
     Guid AvailabilityId,
     MenteeAvailability? Availability,
     decimal? BudgetFrom,
     decimal? BudgetTo,
-    string Goal,
-    Guid GoalDeadlineId,
-    IReadOnlyList<MenteeGoalChoice> Goals,
+    IReadOnlyList<MenteeGoalView> Goals,
     DateTimeOffset UpdatedAt,
     IReadOnlyDictionary<Guid, CatalogRef> CatalogEntries)
 {
@@ -64,19 +75,13 @@ public sealed record MenteeProfileView(
             mentee.OwnedSkills.OrderBy(skill => skill.SkillId)
                 .Select(skill => new MenteeOwnedSkillChoice(skill.SkillId, skill.SkillLevelId)).ToArray(),
             mentee.Skills.Select(skill => skill.SkillId).Order().ToList(),
-            mentee.SkillLevelId,
             mentee.Tasks.Select(task => task.TaskId).Order().ToList(),
             mentee.FormatId,
             mentee.AvailabilityId,
             mentee.Availability,
             mentee.BudgetFrom,
             mentee.BudgetTo,
-            mentee.Goal,
-            mentee.GoalDeadlineId,
-            mentee.Goals.OrderBy(goal => goal.SortOrder)
-                .Select(goal => new MenteeGoalChoice(goal.Id, goal.Text, goal.DeadlineId,
-                    goal.Directions.Select(direction => direction.DirectionId).Order().ToArray()))
-                .ToArray(),
+            MenteeGoalView.From(mentee.Goals, catalogEntries),
             personal.UpdatedAt,
             catalogEntries);
 }

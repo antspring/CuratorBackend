@@ -302,19 +302,6 @@ namespace Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("format_id");
 
-                    b.Property<string>("Goal")
-                        .IsRequired()
-                        .HasColumnType("text")
-                        .HasColumnName("goal");
-
-                    b.Property<Guid>("GoalDeadlineId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("goal_deadline_id");
-
-                    b.Property<Guid>("SkillLevelId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("skill_level_id");
-
                     b.Property<string>("Specialty")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
@@ -338,12 +325,6 @@ namespace Infrastructure.Persistence.Migrations
 
                     b.HasIndex("FormatId")
                         .HasDatabaseName("ix_mentee_profiles_format_id");
-
-                    b.HasIndex("GoalDeadlineId")
-                        .HasDatabaseName("ix_mentee_profiles_goal_deadline_id");
-
-                    b.HasIndex("SkillLevelId")
-                        .HasDatabaseName("ix_mentee_profiles_skill_level_id");
 
                     b.ToTable("mentee_profiles", (string)null);
                 });
@@ -1048,20 +1029,6 @@ namespace Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_mentee_profiles_catalog_items_format_id");
-
-                    b.HasOne("Domain.Catalogs.CatalogItem", null)
-                        .WithMany()
-                        .HasForeignKey("GoalDeadlineId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_mentee_profiles_catalog_items_goal_deadline_id");
-
-                    b.HasOne("Domain.Catalogs.CatalogItem", null)
-                        .WithMany()
-                        .HasForeignKey("SkillLevelId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired()
-                        .HasConstraintName("fk_mentee_profiles_catalog_items_skill_level_id");
 
                     b.HasOne("Infrastructure.Identity.ApplicationUser", null)
                         .WithOne()

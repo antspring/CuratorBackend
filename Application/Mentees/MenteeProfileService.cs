@@ -16,21 +16,18 @@ public sealed class MenteeProfileService(
     public async Task<MenteeProfileView?> FindAsync(Guid userId, CancellationToken cancellationToken)
     {
         var snapshot = await store.FindAsync(userId, cancellationToken);
+        return snapshot is null ? null : await ToViewAsync(snapshot, cancellationToken);
+    }
 
-        if (snapshot is null)
-        {
-            return null;
-        }
-
+    private async Task<MenteeProfileView> ToViewAsync(MenteeProfileSnapshot snapshot, CancellationToken cancellationToken)
+    {
         var mentee = snapshot.Mentee;
         Guid[] ids =
         [
             snapshot.Personal.CityId,
             snapshot.Personal.LanguageId,
-            mentee.SkillLevelId,
             mentee.FormatId,
             mentee.AvailabilityId,
-            mentee.GoalDeadlineId,
             .. mentee.Skills.Select(skill => skill.SkillId),
             .. mentee.Tasks.Select(task => task.TaskId),
             .. mentee.OwnedSkills.Select(skill => skill.SkillId),
@@ -45,64 +42,46 @@ public sealed class MenteeProfileService(
         return MenteeProfileView.From(snapshot.Personal, mentee, photoUrl, entries);
     }
 
-    public async Task<MenteeProfileView?> UpdatePersonalAsync(SaveMenteePersonalCommand command, CancellationToken cancellationToken)
+    public async Task<MenteeProfileView?> PatchAsync(Guid userId, MenteeProfilePatch patch, CancellationToken cancellationToken)
     {
-        await validator.EnsureCatalogReferencesAsync(
-            [new(nameof(command.CityId), CatalogKinds.Cities, [command.CityId])], cancellationToken);
-        var photo = await validator.FindPhotoAsync(command.UserId, command.PhotoFileId, nameof(command.PhotoFileId), cancellationToken);
-        var updated = await store.UpdatePersonalAsync(command, photo, timeProvider.GetUtcNow(), cancellationToken);
-        return updated ? await FindAsync(command.UserId, cancellationToken) : null;
-    }
-
-    public async Task<bool> ReplaceOwnedSkillsAsync(
-        Guid userId, IReadOnlyList<MenteeOwnedSkillChoice> choices, CancellationToken cancellationToken)
-    {
-        await validator.EnsureCatalogReferencesAsync(
-        [
-            new(nameof(MenteeProfile.OwnedSkills), CatalogKinds.Skills, choices.Select(choice => choice.SkillId).ToArray()),
-            new(nameof(MenteeProfile.OwnedSkills), CatalogKinds.SkillLevels, choices.Select(choice => choice.SkillLevelId).ToArray()),
-        ], cancellationToken);
-
-        return await store.ReplaceOwnedSkillsAsync(userId, choices, timeProvider.GetUtcNow(), cancellationToken);
-    }
-
-    public async Task<bool> ReplaceGoalsAsync(
-        Guid userId, IReadOnlyList<MenteeGoalChoice> choices, CancellationToken cancellationToken)
-    {
-        var references = choices.SelectMany((choice, index) => new CatalogReference[]
+        var references = new List<CatalogReference>();
+        if (patch.Personal is { } personal)
         {
-            new($"Goals[{index}].{nameof(choice.DeadlineId)}", CatalogKinds.GoalDeadlines, [choice.DeadlineId]),
-            new($"Goals[{index}].{nameof(choice.DirectionIds)}", CatalogKinds.MentoringDirections, choice.DirectionIds),
-        }).ToArray();
-        await validator.EnsureCatalogReferencesAsync(references, cancellationToken);
-
-        return await store.ReplaceGoalsAsync(userId, choices, timeProvider.GetUtcNow(), cancellationToken);
-    }
-
-    public async Task<bool> UpdateAvailabilityAsync(
-        Guid userId, MenteeAvailability availability, CancellationToken cancellationToken)
-    {
-        if (availability.MeetingCityId is { } cityId)
-        {
-            await validator.EnsureCatalogReferencesAsync(
-                [new(nameof(availability.MeetingCityId), CatalogKinds.Cities, [cityId])], cancellationToken);
+            references.Add(new("Personal.CityId", CatalogKinds.Cities, [personal.CityId]));
         }
 
-        return await store.UpdateAvailabilityAsync(userId, availability, timeProvider.GetUtcNow(), cancellationToken);
+        if (patch.OwnedSkills is { } ownedSkills)
+        {
+            references.AddRange(OwnedSkillReferences(ownedSkills));
+        }
+
+        if (patch.Goals is { } goals)
+        {
+            references.AddRange(GoalReferences(goals));
+        }
+
+        if (patch.Availability?.MeetingCityId is { } cityId)
+        {
+            references.Add(new("Availability.MeetingCityId", CatalogKinds.Cities, [cityId]));
+        }
+
+        await validator.EnsureCatalogReferencesAsync(references, cancellationToken);
+        var photo = await validator.FindPhotoAsync(userId, patch.Personal?.PhotoFileId, "Personal.PhotoFileId", cancellationToken);
+        var snapshot = await store.PatchAsync(userId, patch, photo, timeProvider.GetUtcNow(), cancellationToken);
+        return snapshot is null ? null : await ToViewAsync(snapshot, cancellationToken);
     }
 
     public async Task<SaveMenteeProfileResult> SaveAsync(SaveMenteeProfileCommand command, CancellationToken cancellationToken)
     {
         var answers = new MenteeAnswers(
             command.SkillIds,
-            command.SkillLevelId,
+            command.OwnedSkills,
             command.TaskIds,
             command.FormatId,
             command.AvailabilityId,
             command.BudgetFrom,
             command.BudgetTo,
-            command.Goal,
-            command.GoalDeadlineId);
+            command.Goals);
 
         var personal = await validator.BuildPersonalAsync(command.UserId, command.Personal, cancellationToken);
 
@@ -110,11 +89,11 @@ public sealed class MenteeProfileService(
         [
             .. ProfileInputValidator.PersonalReferences(command.Personal),
             new(nameof(command.SkillIds), CatalogKinds.Skills, command.SkillIds),
-            new(nameof(command.SkillLevelId), CatalogKinds.SkillLevels, [command.SkillLevelId]),
+            .. OwnedSkillReferences(answers.OwnedSkills),
             new(nameof(command.TaskIds), CatalogKinds.MenteeTasks, command.TaskIds),
             new(nameof(command.FormatId), CatalogKinds.Formats, [command.FormatId]),
             new(nameof(command.AvailabilityId), CatalogKinds.Availability, [command.AvailabilityId]),
-            new(nameof(command.GoalDeadlineId), CatalogKinds.GoalDeadlines, [command.GoalDeadlineId]),
+            .. GoalReferences(answers.Goals),
         ];
 
         await validator.EnsureCatalogReferencesAsync(references, cancellationToken);
@@ -131,4 +110,17 @@ public sealed class MenteeProfileService(
             _ => throw new InvalidOperationException($"Неизвестный результат сохранения анкеты: {outcome}"),
         };
     }
+
+    private static CatalogReference[] OwnedSkillReferences(IReadOnlyList<MenteeOwnedSkillChoice> skills) =>
+    [
+        new(nameof(MenteeProfile.OwnedSkills), CatalogKinds.Skills, skills.Select(skill => skill.SkillId).ToArray()),
+        new(nameof(MenteeProfile.OwnedSkills), CatalogKinds.SkillLevels, skills.Select(skill => skill.SkillLevelId).ToArray()),
+    ];
+
+    private static IEnumerable<CatalogReference> GoalReferences(IReadOnlyList<MenteeGoalChoice> goals) =>
+        goals.SelectMany((goal, index) => new CatalogReference[]
+        {
+            new($"Goals[{index}].{nameof(goal.DeadlineId)}", CatalogKinds.GoalDeadlines, [goal.DeadlineId]),
+            new($"Goals[{index}].{nameof(goal.DirectionIds)}", CatalogKinds.MentoringDirections, goal.DirectionIds),
+        });
 }

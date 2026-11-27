@@ -5,30 +5,35 @@ namespace Domain.Mentees;
 public sealed class MenteeAnswers
 {
     public const int MaxSkills = 50;
+    public const int MaxOwnedSkills = 50;
     public const int MaxTasks = 20;
     public const int GoalMinLength = 20;
     public const int GoalMaxLength = 2000;
 
     public MenteeAnswers(
         IEnumerable<Guid> skillIds,
-        Guid skillLevelId,
+        IReadOnlyList<MenteeOwnedSkillChoice> ownedSkills,
         IEnumerable<Guid> taskIds,
         Guid formatId,
         Guid availabilityId,
         decimal? budgetFrom,
         decimal? budgetTo,
-        string goal,
-        Guid goalDeadlineId)
+        IReadOnlyList<MenteeGoalChoice> goals)
     {
         SkillIds = Require.Ids(skillIds, 1, MaxSkills, nameof(SkillIds));
-        SkillLevelId = Require.Id(skillLevelId, nameof(SkillLevelId));
+        ValidateOwnedSkills(ownedSkills, minCount: 1);
+        OwnedSkills = ownedSkills.ToArray();
         TaskIds = Require.Ids(taskIds, 1, MaxTasks, nameof(TaskIds));
         FormatId = Require.Id(formatId, nameof(FormatId));
         AvailabilityId = Require.Id(availabilityId, nameof(AvailabilityId));
         BudgetFrom = budgetFrom is { } from ? Require.Amount(from, nameof(BudgetFrom)) : null;
         BudgetTo = budgetTo is { } to ? Require.Amount(to, nameof(BudgetTo)) : null;
-        Goal = Require.Text(goal, GoalMinLength, GoalMaxLength, nameof(Goal));
-        GoalDeadlineId = Require.Id(goalDeadlineId, nameof(GoalDeadlineId));
+        if (goals.Count is < 1 or > MenteeProfile.MaxGoals)
+        {
+            throw new DomainException(nameof(Goals), $"Укажите от 1 до {MenteeProfile.MaxGoals} целей.");
+        }
+
+        Goals = goals.ToArray();
 
         if (BudgetFrom > BudgetTo)
         {
@@ -38,7 +43,7 @@ public sealed class MenteeAnswers
 
     public IReadOnlyList<Guid> SkillIds { get; }
 
-    public Guid SkillLevelId { get; }
+    public IReadOnlyList<MenteeOwnedSkillChoice> OwnedSkills { get; }
 
     public IReadOnlyList<Guid> TaskIds { get; }
 
@@ -50,7 +55,14 @@ public sealed class MenteeAnswers
 
     public decimal? BudgetTo { get; }
 
-    public string Goal { get; }
+    public IReadOnlyList<MenteeGoalChoice> Goals { get; }
 
-    public Guid GoalDeadlineId { get; }
+    internal static void ValidateOwnedSkills(IReadOnlyList<MenteeOwnedSkillChoice> ownedSkills, int minCount)
+    {
+        Require.Ids(ownedSkills.Select(skill => skill.SkillId), minCount, MaxOwnedSkills, nameof(OwnedSkills));
+        if (ownedSkills.Any(skill => skill.SkillLevelId == Guid.Empty))
+        {
+            throw new DomainException(nameof(OwnedSkills), "Для каждого навыка выберите уровень.");
+        }
+    }
 }
